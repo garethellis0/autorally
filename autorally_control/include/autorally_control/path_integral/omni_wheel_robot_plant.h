@@ -324,18 +324,22 @@ public:
   //virtual void getCostmap(std::vector<int> &description, std::vector<float> &data){};
 
   /**
-   * @brief This is essentially the destructor for this class
+   * @brief This is effectively the destructor for this class
    *
    * This will stop all pubs, subs, and timers.
    * Unfortunately for legacy reasons it has to be here (it's called in the
    * MPPI stuff), but this is really just an indicator of a poor concept of
-   * ownership, it really should just be a destructor
+   * ownership, it really should just be the class destructor.
    */
   virtual void shutdown();
 
 protected:
 
+  // The number of poses that we've received 
   int poseCount_ = 0;
+
+  // Whether or not we should use the feedback gains given. If false, we 
+  // will just execute the control solution given. 
   bool useFeedbackGains_ = false;
 
   // Whether or not we've received a debug image

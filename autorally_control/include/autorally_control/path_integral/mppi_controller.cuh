@@ -48,7 +48,11 @@
 
 namespace autorally_control{
 
-
+/**
+ * @brief A Model Predictive Path Integral (MPPI) Controller
+ * 
+ * TODO: overview of how this works, the general loop, etc.
+ */
 template <class DYNAMICS_T, class COSTS_T, int ROLLOUTS = 2560, int BDIM_X = 64, int BDIM_Y = 1>
 class MPPIController
 {
@@ -86,16 +90,35 @@ public:
 
 
   /**
-  * @brief Constructor for mppi controller class.
-  * @param num_timesteps The number of timesteps to look ahead for.
-  * @param dt The time increment. horizon = num_timesteps*dt
-  * @param model A basis function model of the system dynamics.
-  * @param costs An MppiCosts object.
-  * @param mppi_node Handle to a ros node with mppi parameters available as ros params.
-  */
+   * @brief Constructor for mppi controller class.
+   * @param model The dynamics model to use for predecting the behavior of 
+   *              different control sequences
+   * @param costs The costs to use to guide the search for control sequences
+   * @param num_timesteps The number of timesteps to look ahead for.
+   * @param hz The frequency for the generated controls (ie. dt = 1/hz, the 
+   *           time between consecutive controls in the controls sequence)
+   * @param gamma The constant in the exponent of a norm-exp kernel to rescale
+   *              costs onto an exponential curve
+   * @param exploration_variance A array of floats indicating variance to use
+   *                             when generating new controls via mutation of
+   *                             old controls. length = # control inputs in 
+   *                             given model
+   * @param init_control The initial control values. length = # control inputs
+   *                     in given model.
+   * @param num_optimization_iters The number of iterations to use per set
+   *                               control sequence generated
+   * @param opt_stride The number of controls at the start of the sequence that
+   *                   should not be optimized (ex. If you want to account for
+   *                   the fact that by the time a sequence is done being 
+   *                   optimized, some initial part has already been executed)
+   * @param stream This will be used to ensure that certain operations are 
+   *               executed in the order they are issued to the GPU. In the 
+   *               vast majority of cases the default value for this is 
+   *               entirely sufficient
+   */
   MPPIController(DYNAMICS_T* model, COSTS_T* costs, int num_timesteps, int hz, float gamma,
                  float* exploration_var, float* init_control, int num_optimization_iters = 1,
-                 int opt_stride = 1, cudaStream_t = 0);
+                 int opt_stride = 1, cudaStream_t stream = 0);
 
   /**
   * @brief Destructor for mppi controller class.

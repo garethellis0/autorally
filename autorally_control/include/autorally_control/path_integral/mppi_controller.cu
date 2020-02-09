@@ -318,11 +318,10 @@ MPPI Controller implementation
 *******************************************************************************************************************/
 
 template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
-MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::MPPIController(DYNAMICS_T* model, COSTS_T* costs, 
-                                                                              int num_timesteps, int hz, float gamma, 
-                                                                              float* exploration_var, float* init_u, 
-                                                                              int num_optimization_iters, int opt_stride,
-                                                                              cudaStream_t stream)
+MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::MPPIController(
+    DYNAMICS_T* model, COSTS_T* costs, int num_timesteps, int hz, float gamma, 
+    float* exploration_var, float* init_u, int num_optimization_iters, 
+    int opt_stride, cudaStream_t stream)
 {
   //Initialize internal classes which use the CUDA API.
   model_ = model;

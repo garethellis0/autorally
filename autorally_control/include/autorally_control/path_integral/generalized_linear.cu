@@ -157,9 +157,8 @@ void GeneralizedLinear<BF, S_DIM, C_DIM, BF_DIM, K_FUNC, K_DIM>::computeKinemati
 template<class BF, int S_DIM, int C_DIM, int BF_DIM, class K_FUNC, int K_DIM>
 void GeneralizedLinear<BF, S_DIM, C_DIM, BF_DIM, K_FUNC, K_DIM>::computeDynamics(Eigen::MatrixXf &state, Eigen::MatrixXf &control)
 {
-  int i;
   //Now compute the basis functions.
-  for (i = 0; i < NUM_BFS; i++){
+  for (int i = 0; i < NUM_BFS; i++){
     bf_vec_(i) = basisFunctions_->basisFuncX(i, state.data(), control.data());
   }
   state_der_.block(STATE_DIM - DYNAMICS_DIM, 0, DYNAMICS_DIM, 1) = theta_*bf_vec_;
