@@ -56,6 +56,8 @@ using namespace autorally_control;
 
 typedef OmniWheelRobotDynamicsModel DynamicsModel;
 typedef OmniWheelRobotCosts Costs;
+typedef OmniWheelRobotPathIntegralParamsConfig Config;
+typedef OmniWheelRobotPlant Plant;
 
 // Parameters taken from the autorally basis functions dynamics model
 const int MPPI_NUM_ROLLOUTS__ = 2560;
@@ -70,6 +72,89 @@ const int BLOCKSIZE_Y = 4;
 typedef MPPIController<DynamicsModel, Costs, MPPI_NUM_ROLLOUTS__, 
                        BLOCKSIZE_X, BLOCKSIZE_Y> Controller;
 
+/**
+ * Create the dynamics model based on known ROS parameters (set, for example,
+ * from a roslaunch file)
+ *
+ * @param nh The nodehandle to use to access ROS params
+ * @return A dynamics model
+ */
+DynamicsModel* createDynamicsModel(ros::NodeHandle nh){
+  const float max_wheel_speed = getRosParam<float>("max_wheel_speed", nh);
+  const float controls_frequency = 
+    getRosParam<float>("controls_frequency", nh);
+
+  return new DynamicsModel(1.0/controls_frequency, max_wheel_speed);
+}
+
+/**
+ * Create the controller based on known ROS parameters (set, for example,
+ * from a roslaunch file)
+ *
+ * @param nh The nodehandle to use to access ROS params
+ * @return A controller initialized using ROS params
+ */
+Controller* createController(ros::NodeHandle nh){
+  const float init_u[4] = {0, 0, 0, 0};
+  const float wheel_speed_exploration_variance = 
+    getRosParam<float>("wheel_speed_exploration_variance", nh);
+  const float controls_variance[4] = {
+    wheel_speed_exploration_variance,
+    wheel_speed_exploration_variance,
+    wheel_speed_exploration_variance,
+    wheel_speed_exploration_variance
+  };
+
+  const float controls_frequency = 
+    getRosParam<float>("controls_frequency", nh);
+  const int num_timesteps = getRosParam<int>("num_timesteps", nh);
+  const float norm_exp_kernel_gamma = 
+    getRosParam<float>("norm_exp_kernel_gamma", nh);
+  const int num_optimization_iters = 
+    getRosParam<int>("num_optimization_iters", nh);
+  const int optimization_stride = 
+    getRosParam<int>("optimization_stride", nh);
+  Controller* actual_state_controller = 
+    new Controller(model, costs, num_timesteps, controls_frequency, 
+        norm_exp_kernel_gamma, wheel_speed_exploration_standard_deviation, 
+        init_u, num_optimization_iters, optimization_stride);
+  return new Controller(model, costs, num_timesteps, controls_frequency, 
+        norm_exp_kernel_gamma, wheel_speed_exploration_standard_deviation, 
+        init_u, num_optimization_iters, optimization_stride);
+}
+
+/**
+ * Create the plant based on known ROS parameters (set, for example,
+ * from a roslaunch file)
+ *
+ * @param nh The nodehandle to use to access ROS params. This will also be
+ *           given to the plant constructor.
+ * @return A robot plant initialized using ROS params
+ */
+Plant* createPlant(ros::NodeHandle nh){
+  const bool debug_mode = getRosParam<bool>("debug_mode", nh);
+  const float controls_frequency = 
+    getRosParam<float>("controls_frequency", nh);
+  return new AutorallyPlant(nh, nh, debug_mode, controls_frequency, false);
+}
+
+/**
+ * Initialize dynamic reconfigure and bind a callback to the given plant
+ *
+ * @param plant The plant to bind a dynamic reconfigure callback to
+ * TODO: not sure if the below statement is true, do we really need to return this?
+ * @return A dynamic reconfigure server object that must be kept alive for 
+ *         dynamic reconfigure to function.
+ */
+dynamic_reconfigure::Server<Config> initDynamicReconfigure(Plant* plant){
+  dynamic_reconfigure::Server<Config> server;
+  dynamic_reconfigure::Server<Config>::CallbackType callback_f;
+  callback_f = boost::bind(&Plant::dynRcfgCall, plant, _1, _2);
+  server.setCallback(callback_f);
+
+  return server;
+}
+
 int main(int argc, char** argv) {
   //Ros node initialization
   ros::init(argc, argv, "mppi_controller");
@@ -78,49 +163,16 @@ int main(int argc, char** argv) {
 
   Costs* costs = new Costs(mppi_node);
 
-  const float max_wheel_speed = getRosParam<float>("max_wheel_speed", mppi_node);
-  const float controls_frequency = 
-    getRosParam<float>("controls_frequency", mppi_node);
-  DynamicsModel* model = 
-    new DynamicsModel(1.0/controls_frequency, max_wheel_speed);
+  DynamicsModel* model =  createDynamicsModel(mppi_node);
 
+  Controller* predicted_state_controller =  createController(mppi_node);
 
-  //Define the controller
-  const float init_u[4] = {0, 0, 0, 0};
-  const float wheel_speed_exploration_variance = 
-    getRosParam<float>("wheel_speed_exploration_variance", mppi_node);
-  const float controls_variance[4] = {
-    wheel_speed_exploration_variance,
-    wheel_speed_exploration_variance,
-    wheel_speed_exploration_variance,
-    wheel_speed_exploration_variance
-  };
-  const int num_timesteps = getRosParam<int>("num_timesteps", mppi_node);
-  const float norm_exp_kernel_gamma = 
-    getRosParam<float>("norm_exp_kernel_gamma", mppi_node);
-  const int num_optimization_iters = 
-    getRosParam<int>("num_optimization_iters", mppi_node);
-  const int optimization_stride = 
-    getRosParam<int>("optimization_stride", mppi_node);
-  Controller* actual_state_controller = 
-    new Controller(model, costs, num_timesteps, controls_frequency, 
-        norm_exp_kernel_gamma, wheel_speed_exploration_standard_deviation, 
-        init_u, num_optimization_iters, optimization_stride);
-  Controller* predicted_state_controller = 
-    new Controller(model, costs, num_timesteps, controls_frequency, 
-        norm_exp_kernel_gamma, wheel_speed_exploration_standard_deviation, 
-        init_u, num_optimization_iters, optimization_stride);
+  Plant* robot_plant = createPlant(mppi_node);
 
-  AutorallyPlant* robot = new AutorallyPlant(mppi_node, mppi_node, params.debug_mode, params.hz, false);
-
-  //Setup dynamic reconfigure callback
-  dynamic_reconfigure::Server<PathIntegralParamsConfig> server;
-  dynamic_reconfigure::Server<PathIntegralParamsConfig>::CallbackType callback_f;
-  callback_f = boost::bind(&AutorallyPlant::dynRcfgCall, robot, _1, _2);
-  server.setCallback(callback_f);
+  dynamic_reconfigure::Server<Config> dynamic_reconfigure_server = 
+    initDynamicReconfigure(robot_plant);
 
   boost::thread optimizer;
-
   std::atomic<bool> is_alive(true);
   optimizer = boost::thread(
       &runControlLoop<Controller>, predicted_state_controller, 
