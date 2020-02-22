@@ -73,7 +73,7 @@ inline void OmniWheelRobotMPPICosts::allocateTexMem()
   HANDLE_ERROR(cudaMallocArray(&costmapArray_d_, &channelDesc_, width_, height_));
 }
 
-inline void OmniWheelRobotMPPICosts::updateParams_dcfg(autorally_control::PathIntegralParamsConfig config)
+inline void OmniWheelRobotMPPICosts::updateParams_dcfg(autorally_control::OmniWheelRobotPathIntegralParamsConfig config)
 {
   params_.desired_speed = (float)config.desired_speed;
   params_.speed_coeff = (float)config.speed_coefficient;
@@ -377,7 +377,7 @@ inline __device__ float OmniWheelRobotMPPICosts::computeCost(float* s, float* u,
   float track_cost = getTrackCost(s, crash);
   float speed_cost = getSpeedCost(s, crash);
   float crash_cost = (1.0 - params_.discount)*getCrashCost(s, crash, timestep);
-  float cost = control_cost + speed_cost + crash_cost + track_cost + stabilizing_cost;
+  float cost = control_cost + speed_cost + crash_cost + track_cost;
   if (cost > 1e12 || isnan(cost)) {
     cost = 1e12;
   }

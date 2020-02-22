@@ -15,11 +15,14 @@
 
 #include <autorally_msgs/pathIntegralStatus.h>
 #include <autorally_msgs/pathIntegralTiming.h>
-// TODO: likely going to need to change this to our own config
-#include <autorally_control/PathIntegralParamsConfig.h>
+#include <autorally_msgs/wheelCommands.h>
+#include <autorally_control/OmniWheelRobotPathIntegralParamsConfig.h>
 
 #include <ros/ros.h>
 #include <dynamic_reconfigure/server.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 
@@ -38,9 +41,6 @@
 
 namespace autorally_control {
 
-// TODO: better jdoc 
-// TODO: better name
-// TODO: this really doesn't belong here, but it shouldn't got in run_control_loop.cuh, probably indicates controller arbitrartion should be in its own class.............
 /**
  * This enum denotes what controller was used for an operation
  */
@@ -53,6 +53,11 @@ enum class ControllerType {
   NONE
 };
 
+
+// TODO: better jdoc 
+// TODO: better name
+// TODO: we probably want controller arbitration (predicted state vs. actual)
+//       in it's own class
 /**
 * @class OmniWheelRobotPlant 
 * @brief Publishers and subscribers for the autorally control system.
@@ -67,74 +72,34 @@ enum class ControllerType {
 class OmniWheelRobotPlant
 {
 public:
-  static const int OMNIWHEELROBOT_STATE_DIM = 6;
-  static const int OMNIWHEELROBOT_CONTROL_DIM = 4;
+  static const int STATE_DIM = 9;
+  static const int CONTROL_DIM = 4;
 
-  struct WheelCommands {
-    float front_left_rad_per_s;
-    float front_right_rad_per_s;
-    float back_left_rad_per_s;
-    float back_right_rad_per_s;
-  };
+  using StateVector = Eigen::Matrix<float, STATE_DIM, 1>;
+  using ControlVector = Eigen::Matrix<float, CONTROL_DIM, 1>;
 
-  typedef struct
-  { 
-    // Actual robot state
-    float x_pos_meters;
-    float y_pos_meters;
-    float orientation_rad;
-    float x_velocity_m_per_s;
-    float y_velocity_m_per_s;
-    
-    // Last commands sent to robot
-    WheelCommands last_wheel_commands;
-
-    // TODO: deleteme
-    // //X-Y-theta position
-    // float x_pos;
-    // float y_pos;
-    // float z_pos;
-    // //1-2-3 Euler angles
-    // float roll;
-    // float pitch;
-    // float yaw;
-    // //Quaternions
-    // float q0;
-    // float q1;
-    // float q2;
-    // float q3;
-    // //X-Y-Z velocity.
-    // float x_vel;
-    // float y_vel;
-    // float z_vel;
-    // //Body frame velocity
-    // float u_x;
-    // float u_y;
-    // //Euler angle derivatives
-    // float yaw_mder;
-    // //Current servo commands
-    // float steering;
-    // float throttle;
-  } FullState;
-
-  // TODO: deleteme if you don't need these
-  //float last_heading_ = 0.0;
-  //float throttleMax_ = 0.99;
-  //int heading_multiplier_ = 0;
+  // Not sure why these are needed, it's carry-over from legacy, looks like it 
+  // has *something* to do with preventing heading wrapping
+  float last_heading_ = 0.0;
+  int heading_multiplier_ = 0;
 
   boost::mutex access_guard_;
   std::string nodeNamespace_;
 
-  //bool new_model_available_;
-  //cv::Mat debugImg_;
+  // The most recent debug image that we've received
+  cv::Mat debugImg_;
 
-  //bool solutionReceived_ = false;
-  //bool is_nodelet_;
+  // Whether or not we've received the first solution
+  bool solutionReceived_ = false;
+  
+  // Whether or not this is running in a ROS nodelet
+  bool is_nodelet_;
   
   // Variables for interfacing with the CUDA code
   std::vector<float> controlSequence_;
   std::vector<float> stateSequence_;
-  util::EigenAlignedVector<float, 2, 7> feedback_gains_;
+  util::EigenAlignedVector<float, CONTROL_DIM, STATE_DIM> feedback_gains_;
+
   // TODO: what is this used for? *is* this for interacting with cuda code? 
   //       or something else entirely?
   ros::Time solutionTs_;
@@ -148,15 +113,15 @@ public:
   // will overwrite it
   int controller_type_debug_point_id = 0;
 
-  // TODO: uncomment or delete
-  //int numTimesteps_;
+  // The expected number of timestamps in each state and control sequence
+  int numTimesteps_;
   
   // The step size for both the control and state sequences
   // TODO: why is this public? Make private if possible
   double deltaT_;
 
-  // TODO: uncomment and explain or delete
-  //double optimizationLoopTime_;
+  // An estimate of how long the most recent solution took to compute
+  double optimizationLoopTime_;
 
   /**
   * @brief Constructor for OmniWheelRobotPlant, takes the a ros node handle and 
@@ -187,38 +152,30 @@ public:
   */
   OmniWheelRobotPlant(ros::NodeHandle global_node, bool debug_mode, int hz);
 
-  // TODO: uncomment or delete
-  ///**
-  //* @brief Callback for /pose_estimate subscriber.
-  //*/
-  //void poseCall(nav_msgs::Odometry pose_msg);
-
-  // TODO: uncomment or delete
-  ///**
-  //* @brief Callback for recording the current servo input.
-  //*/
-  //void servoCall(autorally_msgs::chassisState servo_msg);
-
-  // TODO: uncomment or delete 
-  //bool hasNewModel();
-  //virtual void modelCall(autorally_msgs::neuralNetModel model_msg);
-  //virtual void getModel(std::vector<int> &description, std::vector<float> &data);
-
-  // TODO: uncomment or delete
-  ///**
-  //* @brief Callback for safe speed subscriber.
-  //*/
-  //void runstopCall(autorally_msgs::runstop safe_msg);
+  /**
+  * @brief Callback for /pose_estimate subscriber.
+  */
+  void poseCall(nav_msgs::Odometry pose_msg);
 
   /**
   * @brief Publishes the controller's nominal path.
   */
   void pubPath(const ros::TimerEvent&);
 
-  // TODO: uncomment or delete bool
-  //void setSolution(std::vector<float> traj, std::vector<float> controls, 
-  //                 util::EigenAlignedVector<float, 2, 7> gains,
-  //                 ros::Time timestamp, double loop_speed, ControllerType controller_type_used);
+  /**
+   * Set the control solution to be executed by this plant
+   *
+   * @param traj The trajectory to track
+   * @param controls The controls to track the tracjectory
+   * @param gains The gains to use to track the trajectory if using feedback
+   * @param timestamp The time the controls/trajectory were computed at
+   * @param loop_speed An estimate of how long this solution took to compute
+   * @param controller_type_used The type of controller used to compute the
+   *                             trajectory/controls
+   */
+  void setSolution(std::vector<float> traj, std::vector<float> controls, 
+                   util::EigenAlignedVector<float, CONTROL_DIM, STATE_DIM> gains,
+                   ros::Time timestamp, double loop_speed, ControllerType controller_type_used);
 
   /**
    * @brief Set the debug image to the given one
@@ -246,18 +203,21 @@ public:
   * @brief Publishes a control input
   * @param wheel_commands The control to publish
   */
-  void pubControl(WheelCommands wheel_commands);
-
-  // TODO: uncomment or delete
-  //void pubStatus(const ros::TimerEvent&);
-
-  // TODO: uncomment or delete
-  //void pubControllerTypeDebug(const ros::TimerEvent&);
+  void pubControl(ControlVector wheel_commands);
 
   /**
-  * @brief Returns the current state of this plant
-  */
-  FullState getState();
+   * @brief Publishes status information about this plant
+   *
+   * This should be setup to be triggered from a ROS timer at a fixed interval
+   */
+  void pubStatus(const ros::TimerEvent&);
+
+  /**
+   * @brief Publishes what controller was used to execute the trajectory this
+   *        plant is currently executing
+   * This should be setup to be triggered from a ROS timer at a fixed interval
+   */
+  void pubControllerTypeDebug(const ros::TimerEvent&);
 
   /**
    * @brief Return if the robot speed is being capped to a safe value
@@ -269,7 +229,7 @@ public:
   /**
   * @brief Returns the timestamp of the last pose callback.
   */
-  ros::Time getLastPoseUpdateTime();
+  ros::Time getLastPoseTime();
 
   /**
   * @brief Checks the system status.
@@ -289,7 +249,7 @@ public:
    * @param lvl The "level", which is the OR or all the level values of all
    *            the parameters that changed
    */
-  void dynRcfgCall(autorally_control::PathIntegralParamsConfig &config, int lvl);
+  void dynRcfgCall(autorally_control::OmniWheelRobotPathIntegralParamsConfig &config, int lvl);
 
   /**
    * @brief Check if this plant has a new dynamic reconfigure config
@@ -306,7 +266,7 @@ public:
    *
    * @return The most recently received dynamic reconfigure config
    */
-  autorally_control::PathIntegralParamsConfig getDynRcfgParams();
+  autorally_control::OmniWheelRobotPathIntegralParamsConfig getDynRcfgParams();
 
   /**
    * @brief Displays the debug image last set on this plant in a window
@@ -315,13 +275,18 @@ public:
    */
   virtual void displayDebugImage(const ros::TimerEvent&);
 
-  // TODO: uncomment or delete
-  //virtual bool hasNewObstacles(){return false;};
-  //virtual void getObstacles(std::vector<int> &description, std::vector<float> &data){};
+  /**
+  * @brief Returns the current state of this plant
+  * @return A vector containing the state of this plant
+  */
+  StateVector getStateVector();
 
-  // TODO: uncomment or delete
-  //virtual bool hasNewCostmap(){return false;};
-  //virtual void getCostmap(std::vector<int> &description, std::vector<float> &data){};
+  /**
+   * Set the state of this plant from the state represented by the given vector
+   *
+   * @param new_state The new state for this plant
+   */
+  void setStateFromVector(StateVector new_state);
 
   /**
    * @brief This is effectively the destructor for this class
@@ -335,6 +300,55 @@ public:
 
 protected:
 
+  typedef struct
+  { 
+    // Actual robot state
+    float x_pos;
+    float y_pos;
+    float yaw;
+    float x_vel;
+    float y_vel;
+    float angular_vel;
+    float x_accel;
+    float y_accel;
+    float angular_accel;
+
+    
+
+    // TODO: deleteme
+    // //X-Y-theta position
+    // float x_pos;
+    // float y_pos;
+    // float z_pos;
+    // //1-2-3 Euler angles
+    // float roll;
+    // float pitch;
+    // float yaw;
+    // //Quaternions
+    // float q0;
+    // float q1;
+    // float q2;
+    // float q3;
+    // //X-Y-Z velocity.
+    // float x_vel;
+    // float y_vel;
+    // float z_vel;
+    // //Body frame velocity
+    // float u_x;
+    // float u_y;
+    // //Euler angle derivatives
+    // float yaw_mder;
+    // //Current servo commands
+    // float steering;
+    // float throttle;
+  } FullState;
+  
+  /**
+   * Get the current state of this plant
+   * @return The current state of this plant
+   */
+  FullState getState();
+
   // The number of poses that we've received 
   int poseCount_ = 0;
 
@@ -347,7 +361,7 @@ protected:
 
   // The parameters that make up the cost function for this plant
   // TODO: we're probably going to need to change this to our own config type
-  autorally_control::PathIntegralParamsConfig costParams_;
+  autorally_control::OmniWheelRobotPathIntegralParamsConfig costParams_;
 
   // Whether or not we have a set of new cost parameters, in the form of a
   // new dynamic configuration. Should be set true after a new config is 
@@ -381,7 +395,6 @@ protected:
   ros::Publisher debug_controller_type_pub_; ///< Publishes points indicating what controller was used where
   ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
   ros::Subscriber servo_sub_;
-  ros::Subscriber model_sub_;
   ros::Timer pathTimer_;
   ros::Timer statusTimer_;
   ros::Timer debugImgTimer_;

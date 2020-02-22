@@ -1,0 +1,5 @@
+Header header
+float64 front_left_rad_per_s
+float64 front_right_rad_per_s
+float64 back_left_rad_per_s
+float64 back_right_rad_per_s

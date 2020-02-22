@@ -117,7 +117,7 @@ public:
   * This function allows the dynamics reconfigure variables to be passed through directly to
   * the cost function. 
   */
-  void updateParams_dcfg(autorally_control::PathIntegralParamsConfig config);
+  void updateParams_dcfg(autorally_control::OmniWheelRobotPathIntegralParamsConfig config);
 
   /**
   * @brief Initializes the host side costmap to all zeros.
@@ -142,7 +142,7 @@ public:
   void updateParams(ros::NodeHandle mppi_node);
 
 
-  //void updateParams_dcfg(autorally_control::PathIntegralParamsConfig &config, int lvl);
+  //void updateParams_dcfg(autorally_control::OmniWheelRobotPathIntegralParamsConfig &config, int lvl);
   /*
   * @brief Updates the current costmap coordinate transform.
   * @param h Matrix representing a transform from world to (offset) costmap coordinates.
@@ -296,6 +296,6 @@ protected:
 
 }
 
-#include "costs.cu"
+#include "omni_wheel_robot_costs.cu"
 
 #endif /*MPPI_COST_CUH*/

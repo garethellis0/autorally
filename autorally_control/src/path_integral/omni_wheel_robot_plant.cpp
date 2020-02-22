@@ -24,14 +24,13 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeH
   debug_mode_ = getRosParam<bool>("debug_mode", mppi_node);
   numTimesteps_ = getRosParam<int>("num_timesteps", mppi_node);
   useFeedbackGains_ = getRosParam<bool>("use_feedback_gains", mppi_node);
-  throttleMax_ = getRosParam<float>("max_throttle", mppi_node);
   deltaT_ = 1.0/hz;
 
-  controlSequence_.resize(AUTORALLY_CONTROL_DIM*numTimesteps_);
-  stateSequence_.resize(AUTORALLY_STATE_DIM*numTimesteps_);
+  controlSequence_.resize(CONTROL_DIM*numTimesteps_);
+  stateSequence_.resize(STATE_DIM*numTimesteps_);
 
   //Initialize the publishers.
-  control_pub_ = mppi_node.advertise<autorally_msgs::chassisCommand>("chassisCommand", 1);
+  control_pub_ = mppi_node.advertise<autorally_msgs::wheelCommands>("wheelCommands", 1);
   path_pub_ = mppi_node.advertise<nav_msgs::Path>("nominalPath", 1);
   subscribed_pose_pub_ = mppi_node.advertise<nav_msgs::Odometry>("subscribedPose", 1);
   status_pub_ = mppi_node.advertise<autorally_msgs::pathIntegralStatus>("mppiStatus", 1);
@@ -41,8 +40,6 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeH
   //Initialize the subscribers.
   pose_sub_ = global_node.subscribe(pose_estimate_name, 1, &OmniWheelRobotPlant::poseCall, this,
                                   ros::TransportHints().tcpNoDelay());
-  servo_sub_ = global_node.subscribe("chassisState", 1, &OmniWheelRobotPlant::servoCall, this);
-  model_sub_ = global_node.subscribe("/model_updater/model", 1, &OmniWheelRobotPlant::modelCall, this);
   //Timer callback for path publisher
   pathTimer_ = mppi_node.createTimer(ros::Duration(0.033), &OmniWheelRobotPlant::pubPath, this);
   statusTimer_ = mppi_node.createTimer(ros::Duration(0.033), &OmniWheelRobotPlant::pubStatus, this);
@@ -54,11 +51,15 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeH
   safe_speed_zero_ = false;
   debug_mode_ = debug_mode;
   activated_ = false;
-  new_model_available_ = false;
   last_pose_call_ = ros::Time::now();
+
+  // Initialize state
+  full_state_.angular_vel = 0.0;
+  full_state_.x_accel = 0.0;
+  full_state_.y_accel = 0.0;
+  full_state_.angular_accel = 0.0;
   
   //Initialize yaw derivative to zero
-  full_state_.yaw_mder = 0.0;
   status_ = 1;
   if (debug_mode_){
     ocs_msg_ = "Debug Mode";
@@ -85,19 +86,29 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeH
 }
 
 void OmniWheelRobotPlant::setSolution(std::vector<float> traj, std::vector<float> controls, 
-                                util::EigenAlignedVector<float, 2, 7> gains,
+                                util::EigenAlignedVector<float, CONTROL_DIM, STATE_DIM> gains,
                                 ros::Time ts, double loop_speed, 
                                 ControllerType controller_type_used)
 {
   boost::mutex::scoped_lock lock(access_guard_);
   optimizationLoopTime_ = loop_speed;
   solutionTs_ = ts;
+
+  if (traj.size() != numTimesteps_*STATE_DIM){
+    ROS_INFO("Received a trajectory with the incorrect number of values.");
+    ros::shutdown();
+  }
+  if (controls.size() != numTimesteps_*CONTROL_DIM){
+    ROS_INFO("Received a controls with the incorrect number of values.");
+    ros::shutdown();
+  }
+
   for (int t = 0; t < numTimesteps_; t++){
-    for (int i = 0; i < AUTORALLY_STATE_DIM; i++){
-      stateSequence_[AUTORALLY_STATE_DIM*t + i] = traj[AUTORALLY_STATE_DIM*t + i];
+    for (int i = 0; i < STATE_DIM; i++){
+      stateSequence_[STATE_DIM*t + i] = traj[STATE_DIM*t + i];
     }
-    for (int i = 0; i < AUTORALLY_CONTROL_DIM; i++){
-      controlSequence_[AUTORALLY_CONTROL_DIM*t + i] = controls[AUTORALLY_CONTROL_DIM*t + i];
+    for (int i = 0; i < CONTROL_DIM; i++){
+      controlSequence_[CONTROL_DIM*t + i] = controls[CONTROL_DIM*t + i];
     }
   }
   feedback_gains_ = gains;
@@ -155,15 +166,11 @@ void OmniWheelRobotPlant::poseCall(nav_msgs::Odometry pose_msg)
   //Update position
   full_state_.x_pos = pose_msg.pose.pose.position.x;
   full_state_.y_pos = pose_msg.pose.pose.position.y;
-  full_state_.z_pos = pose_msg.pose.pose.position.z;
   //Grab the quaternion
   float q0 = pose_msg.pose.pose.orientation.w;
   float q1 = pose_msg.pose.pose.orientation.x;
   float q2 = pose_msg.pose.pose.orientation.y;
   float q3 = pose_msg.pose.pose.orientation.z;
-  	//Update euler angles. These use the 1-2-3 Euler angle convention.
-  full_state_.roll = atan2(2*q2*q3 + 2*q0*q1, q3*q3 - q2*q2 - q1*q1 + q0*q0);
-  full_state_.pitch = -asin(2*q1*q3 - 2*q0*q2);
   full_state_.yaw = atan2(2*q1*q2 + 2*q0*q3, q1*q1 + q0*q0 - q3*q3 - q2*q2);
 
   //Don't allow heading to wrap around
@@ -176,150 +183,80 @@ void OmniWheelRobotPlant::poseCall(nav_msgs::Odometry pose_msg)
   last_heading_ = full_state_.yaw;
   full_state_.yaw = full_state_.yaw + heading_multiplier_*2*3.14159265359;
 
-  //Update the quaternion
-  full_state_.q0 = q0;
-  full_state_.q1 = q1;
-  full_state_.q2 = q2;
-  full_state_.q3 = q3;
   //Update the world frame velocity
   full_state_.x_vel = pose_msg.twist.twist.linear.x;
   full_state_.y_vel = pose_msg.twist.twist.linear.y;
-  full_state_.z_vel = pose_msg.twist.twist.linear.z;
   //Update the body frame longitudenal and lateral velocity
-  full_state_.u_x = cos(full_state_.yaw)*full_state_.x_vel + sin(full_state_.yaw)*full_state_.y_vel;
-  full_state_.u_y = -sin(full_state_.yaw)*full_state_.x_vel + cos(full_state_.yaw)*full_state_.y_vel;
-  //Update the minus yaw derivative.
-  full_state_.yaw_mder = -pose_msg.twist.twist.angular.z;
+  full_state_.x_vel = cos(full_state_.yaw)*full_state_.x_vel + sin(full_state_.yaw)*full_state_.y_vel;
+  full_state_.y_vel = -sin(full_state_.yaw)*full_state_.x_vel + cos(full_state_.yaw)*full_state_.y_vel;
+  full_state_.angular_vel = -pose_msg.twist.twist.angular.z;
 
   //Interpolate and publish the current control
   double timeFromLastOpt = (last_pose_call_ - solutionTs_).toSec();
 
+  ControlVector ff_terms;
   if (solutionReceived_ && timeFromLastOpt > 0 && timeFromLastOpt < (numTimesteps_-1)*deltaT_){
-    double steering_ff, throttle_ff, steering_fb, throttle_fb, steering, throttle;
     int lowerIdx = (int)(timeFromLastOpt/deltaT_);
     int upperIdx = lowerIdx + 1;
     double alpha = (timeFromLastOpt - lowerIdx*deltaT_)/deltaT_;
-    steering_ff = (1 - alpha)*controlSequence_[2*lowerIdx] + alpha*controlSequence_[2*upperIdx];
-    throttle_ff = (1 - alpha)*controlSequence_[2*lowerIdx + 1] + alpha*controlSequence_[2*upperIdx + 1];
 
-    if (!useFeedbackGains_){ //Just publish the computed open loop controls
-      steering = steering_ff;
-      throttle = throttle_ff;
+    for (size_t i = 0; i < CONTROL_DIM; i++){
+      ff_terms(i) = (1 - alpha)*controlSequence_[CONTROL_DIM*lowerIdx +i] + 
+                    alpha*controlSequence_[CONTROL_DIM*upperIdx + i];
     }
-    else { //Compute the error between the current and actual state and apply feedback gains
-      Eigen::MatrixXf current_state(7,1);
-      Eigen::MatrixXf desired_state(7,1);
-      Eigen::MatrixXf deltaU;
-      current_state << full_state_.x_pos, full_state_.y_pos, full_state_.yaw, full_state_.roll, full_state_.u_x, full_state_.u_y, full_state_.yaw_mder;
-      for (int i = 0; i < 7; i++){
-        desired_state(i) = (1 - alpha)*stateSequence_[7*lowerIdx + i] + alpha*stateSequence_[7*upperIdx + i];
+
+    // Default to just using feed forward terms (ie. open loop control)
+    ControlVector final_controls = ff_terms;
+    if (useFeedbackGains_) { 
+      //Compute the error between the current and actual state and apply feedback gains
+      StateVector current_state = getStateVector();
+      StateVector desired_state;
+      StateVector deltaU;
+      for (int i = 0; i < STATE_DIM; i++){
+        desired_state(i) = (1 - alpha)*stateSequence_[STATE_DIM*lowerIdx + i] 
+          + alpha*stateSequence_[STATE_DIM*upperIdx + i];
       }
       
-      deltaU = ((1-alpha)*feedback_gains_[lowerIdx] + alpha*feedback_gains_[upperIdx])*(current_state - desired_state);
+      ControlVector fb_terms = ((1-alpha)*feedback_gains_[lowerIdx] + 
+          alpha*feedback_gains_[upperIdx])*(current_state - desired_state);
 
-      if (std::isnan( deltaU(0) ) || std::isnan( deltaU(1))){
-        steering = steering_ff;
-        throttle = throttle_ff;
-      }
-      else {
-        steering_fb = deltaU(0);
-        throttle_fb = deltaU(1);
-        steering = fmin(0.99, fmax(-0.99, steering_ff + steering_fb));
-        throttle = fmin(throttleMax_, fmax(-0.99, throttle_ff + throttle_fb));
+      if (!fb_terms.hasNaN()){
+        // TODO: probably want to enforce some sort of constraints here
+        //steering = fmin(0.99, fmax(-0.99, steering_ff + steering_fb));
+        //throttle = fmin(throttleMax_, fmax(-0.99, throttle_ff + throttle_fb));
+        final_controls = ff_terms + fb_terms;
       }
     }
-    pubControl(steering, throttle);
+    pubControl(final_controls);
   }
 }
 
-void OmniWheelRobotPlant::servoCall(autorally_msgs::chassisState servo_msg)
-{
-  boost::mutex::scoped_lock lock(access_guard_);
-  full_state_.steering = servo_msg.steering;
-  full_state_.throttle = servo_msg.throttle;
-}
-
-void OmniWheelRobotPlant::modelCall(autorally_msgs::neuralNetModel model_msg)
-{
-  boost::mutex::scoped_lock lock(access_guard_);
-  new_model_available_ = true;
-  dynamicsModel_ = model_msg;
-}
-
-bool OmniWheelRobotPlant::hasNewModel()
-{
-  boost::mutex::scoped_lock lock(access_guard_);
-  return new_model_available_;
-}
-
-void OmniWheelRobotPlant::getModel(std::vector<int> &description, std::vector<float> &data)
-{
-  boost::mutex::scoped_lock lock(access_guard_);
-  //Copy network structure into description
-  description = dynamicsModel_.structure;
-  //Compute total number of weights
-  int numWeights = 0;
-  int numBiases = 0;
-  for (int i = 0; i < dynamicsModel_.numLayers; i++){
-    numWeights += dynamicsModel_.network[i].weight.size();
-    numBiases += dynamicsModel_.network[i].bias.size();
-  }
-  data.resize(numWeights + numBiases);
-  int weightStride = 0;
-  int biasStride = numWeights;
-  for (int i = 0; i < dynamicsModel_.numLayers; i++){
-    for (int j = 0; j < dynamicsModel_.network[i].weight.size(); j++){
-      data[weightStride + j] = dynamicsModel_.network[i].weight[j];
-    }
-    for (int j = 0; j < dynamicsModel_.network[i].bias.size(); j++){
-      data[biasStride + j] = dynamicsModel_.network[i].bias[j];
-    }
-    weightStride += dynamicsModel_.network[i].weight.size();
-    biasStride += dynamicsModel_.network[i].bias.size();
-  }
-  new_model_available_ = false;
-}
-
-void OmniWheelRobotPlant::runstopCall(autorally_msgs::runstop safe_msg)
-{
-  boost::mutex::scoped_lock lock(access_guard_);
-  if (safe_msg.motionEnabled == false){
-    safe_speed_zero_ = true;
-  }
-}
 
 void OmniWheelRobotPlant::pubPath(const ros::TimerEvent&)
 {
   boost::mutex::scoped_lock lock(access_guard_);
   path_msg_.poses.clear();
   nav_msgs::Odometry subscribed_state;
-  int i;
-  float phi,theta,psi,q0,q1,q2,q3;
   ros::Time begin = solutionTs_;
   for (int i = 0; i < numTimesteps_; i++) {
     geometry_msgs::PoseStamped pose;
-    pose.pose.position.x = stateSequence_[i*(AUTORALLY_STATE_DIM)];
-    pose.pose.position.y = stateSequence_[i*(AUTORALLY_STATE_DIM) + 1];
+    pose.pose.position.x = stateSequence_[i*(STATE_DIM)];
+    pose.pose.position.y = stateSequence_[i*(STATE_DIM) + 1];
     pose.pose.position.z = 0;
-    psi = stateSequence_[i*(AUTORALLY_STATE_DIM) + 2];
-    phi = stateSequence_[i*(AUTORALLY_STATE_DIM) + 3];
-    theta = 0;
-    q0 = cos(phi/2)*cos(theta/2)*cos(psi/2) + sin(phi/2)*sin(theta/2)*sin(psi/2);
-    q1 = -cos(phi/2)*sin(theta/2)*sin(psi/2) + cos(theta/2)*cos(psi/2)*sin(phi/2);
-    q2 = cos(phi/2)*cos(psi/2)*sin(theta/2) + sin(phi/2)*cos(theta/2)*sin(psi/2);
-    q3 = cos(phi/2)*cos(theta/2)*sin(psi/2) - sin(phi/2)*cos(psi/2)*sin(theta/2); 
-    pose.pose.orientation.w = q0;
-    pose.pose.orientation.x = q1;
-    pose.pose.orientation.y = q2;
-    pose.pose.orientation.z = q3;
+
+    tf2::Quaternion quat;
+    float yaw = stateSequence_[i*(STATE_DIM) + 2];
+    quat.setRPY(yaw, 0, 0);
+    pose.pose.orientation = tf2::toMsg(quat);
+
     pose.header.stamp = begin + ros::Duration(i*deltaT_);
     pose.header.frame_id = "odom";
     path_msg_.poses.push_back(pose);
     if (i == 0){
       subscribed_state.pose.pose = pose.pose;
-      subscribed_state.twist.twist.linear.x = stateSequence_[4];
-      subscribed_state.twist.twist.linear.y = stateSequence_[5];
-      subscribed_state.twist.twist.angular.z = -stateSequence_[6];
+      subscribed_state.twist.twist.linear.x = stateSequence_[3];
+      subscribed_state.twist.twist.linear.y = stateSequence_[4];
+      subscribed_state.twist.twist.angular.z = stateSequence_[5];
     }
   }
   subscribed_state.header.stamp = begin;
@@ -330,26 +267,28 @@ void OmniWheelRobotPlant::pubPath(const ros::TimerEvent&)
   subscribed_pose_pub_.publish(subscribed_state);
 }
 
-void OmniWheelRobotPlant::pubControl(float steering, float throttle)
+void OmniWheelRobotPlant::pubControl(OmniWheelRobotPlant::ControlVector wheel_commands)
 {
-  autorally_msgs::chassisCommand control_msg; ///< Autorally control message initialization.
+  autorally_msgs::wheelCommands control_msg; ///< Autorally control message initialization.
   //Publish the steering and throttle commands
-  if (std::isnan(throttle) || std::isnan(steering)){ //Nan control publish zeros and exit.
+  if (wheel_commands.hasNaN()){ 
     ROS_INFO("NaN Control Input Detected");
-    control_msg.steering = 0;
-    control_msg.throttle = -.99;
-    control_msg.frontBrake = -5.0;
+    control_msg.front_left_rad_per_s = 0;
+    control_msg.front_right_rad_per_s = 0;
+    control_msg.back_left_rad_per_s = 0;
+    control_msg.back_right_rad_per_s = 0;
     control_msg.header.stamp = ros::Time::now();
-    control_msg.sender = "mppi_controller";
+
     control_pub_.publish(control_msg);
     ros::shutdown(); //No use trying to recover, quitting is the best option.
   }
-  else { //Publish the computed control input.
-    control_msg.steering = steering;
-    control_msg.throttle = throttle;
-    control_msg.frontBrake = -5.0;
+  else {
+    control_msg.front_left_rad_per_s = wheel_commands(0);
+    control_msg.front_right_rad_per_s = wheel_commands(1);
+    control_msg.back_left_rad_per_s = wheel_commands(2);
+    control_msg.back_right_rad_per_s = wheel_commands(3);
     control_msg.header.stamp = ros::Time::now();
-    control_msg.sender = "mppi_controller";
+
     control_pub_.publish(control_msg);
   }
 }
@@ -408,13 +347,29 @@ OmniWheelRobotPlant::FullState OmniWheelRobotPlant::getState()
   return full_state_;
 }
 
-bool OmniWheelRobotPlant::getRunstop()
+OmniWheelRobotPlant::StateVector OmniWheelRobotPlant::getStateVector()
 {
+  StateVector state_vector;
   boost::mutex::scoped_lock lock(access_guard_);
-  return safe_speed_zero_;
+  state_vector << full_state_.x_pos, full_state_.y_pos, full_state_.yaw, 
+                  full_state_.x_vel, full_state_.y_vel, full_state_.angular_vel,
+                  full_state_.x_accel, full_state_.y_accel, full_state_.angular_accel;
+  return state_vector;
 }
 
-ros::Time OmniWheelRobotPlant::getLastPoseUpdateTime()
+void OmniWheelRobotPlant::setStateFromVector(StateVector new_state){
+  full_state_.x_pos = new_state(0);
+  full_state_.y_pos = new_state(1);
+  full_state_.yaw = new_state(2);
+  full_state_.x_vel = new_state(3);
+  full_state_.y_vel = new_state(4);
+  full_state_.angular_vel = new_state(5);
+  full_state_.x_accel = new_state(6);
+  full_state_.y_accel = new_state(7);
+  full_state_.angular_accel = new_state(8);
+}
+
+ros::Time OmniWheelRobotPlant::getLastPoseTime()
 {
   boost::mutex::scoped_lock lock(access_guard_);
   return last_pose_call_;
@@ -438,18 +393,15 @@ int OmniWheelRobotPlant::checkStatus()
   return status_;
 }
 
-void OmniWheelRobotPlant::dynRcfgCall(autorally_control::PathIntegralParamsConfig &config, int lvl)
+void OmniWheelRobotPlant::dynRcfgCall(autorally_control::OmniWheelRobotPathIntegralParamsConfig &config, int lvl)
 {
   boost::mutex::scoped_lock lock(access_guard_);
+  costParams_.max_wheel_speed = config.max_wheel_speed;
   costParams_.desired_speed = config.desired_speed;
   costParams_.speed_coefficient = config.speed_coefficient;
   costParams_.track_coefficient = config.track_coefficient;
-  costParams_.max_slip_angle = config.max_slip_angle;
-  costParams_.slip_penalty = config.slip_penalty;
   costParams_.crash_coefficient = config.crash_coefficient;
   costParams_.track_slop = config.track_slop;
-  costParams_.steering_coeff = config.steering_coeff;
-  costParams_.throttle_coeff = config.throttle_coeff;
   hasNewCostParams_ = true;
 }
 
@@ -458,7 +410,7 @@ bool OmniWheelRobotPlant::hasNewDynRcfg()
   return hasNewCostParams_;
 }
 
-autorally_control::PathIntegralParamsConfig OmniWheelRobotPlant::getDynRcfgParams()
+autorally_control::OmniWheelRobotPathIntegralParamsConfig OmniWheelRobotPlant::getDynRcfgParams()
 {
   boost::mutex::scoped_lock lock(access_guard_);
   hasNewCostParams_ = false;
@@ -471,7 +423,6 @@ void OmniWheelRobotPlant::shutdown()
   boost::mutex::scoped_lock lock(access_guard_);
   path_pub_.shutdown();
   pose_sub_.shutdown();
-  servo_sub_.shutdown();
   pathTimer_.stop();
   statusTimer_.stop();
   debugImgTimer_.stop();

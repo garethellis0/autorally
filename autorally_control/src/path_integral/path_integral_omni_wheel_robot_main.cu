@@ -39,11 +39,12 @@
 #include <autorally_control/path_integral/param_getter.h>
 #include <autorally_control/path_integral/omni_wheel_robot_plant.h>
 #include <autorally_control/OmniWheelRobotPathIntegralParamsConfig.h>
+#include <autorally_control/PathIntegralParamsConfig.h>
 #include <autorally_control/path_integral/omni_wheel_robot_costs.cuh>
 
-#include <autorally_control/path_integral/omni_wheel_robot_dynamics_model.cuh>
+#include <autorally_control/path_integral/omni_wheel_robot_model.cuh>
 #include <autorally_control/path_integral/mppi_controller.cuh>
-#include <autorally_control/path_integral/run_control_loop.cuh>
+#include <autorally_control/path_integral/omni_wheel_robot_run_control_loop.cuh>
 
 #include <ros/ros.h>
 #include <atomic>
@@ -54,8 +55,8 @@
 
 using namespace autorally_control;
 
-typedef OmniWheelRobotDynamicsModel DynamicsModel;
-typedef OmniWheelRobotCosts Costs;
+typedef OmniWheelRobotModel DynamicsModel;
+typedef OmniWheelRobotMPPICosts Costs;
 typedef OmniWheelRobotPathIntegralParamsConfig Config;
 typedef OmniWheelRobotPlant Plant;
 
@@ -80,46 +81,44 @@ typedef MPPIController<DynamicsModel, Costs, MPPI_NUM_ROLLOUTS__,
  * @return A dynamics model
  */
 DynamicsModel* createDynamicsModel(ros::NodeHandle nh){
-  const float max_wheel_speed = getRosParam<float>("max_wheel_speed", nh);
-  const float controls_frequency = 
-    getRosParam<float>("controls_frequency", nh);
+  const float max_wheel_speed = getRosParam<float>("max_abs_wheel_speed", nh);
+  const int controls_frequency = 
+    getRosParam<int>("controls_frequency", nh);
 
-  return new DynamicsModel(1.0/controls_frequency, max_wheel_speed);
+  return new DynamicsModel(1.0/ (float)controls_frequency, max_wheel_speed);
 }
 
 /**
  * Create the controller based on known ROS parameters (set, for example,
  * from a roslaunch file)
  *
+ * @param model The model to use for the controller
+ * @param costs The costs to use for the controller
  * @param nh The nodehandle to use to access ROS params
  * @return A controller initialized using ROS params
  */
-Controller* createController(ros::NodeHandle nh){
-  const float init_u[4] = {0, 0, 0, 0};
-  const float wheel_speed_exploration_variance = 
+Controller* createController(DynamicsModel* model, Costs* costs, ros::NodeHandle nh){
+  float init_u[4] = {0, 0, 0, 0};
+  float wheel_speed_exploration_variance = 
     getRosParam<float>("wheel_speed_exploration_variance", nh);
-  const float controls_variance[4] = {
+  float controls_exploration_variance[4] = {
     wheel_speed_exploration_variance,
     wheel_speed_exploration_variance,
     wheel_speed_exploration_variance,
     wheel_speed_exploration_variance
   };
 
-  const float controls_frequency = 
-    getRosParam<float>("controls_frequency", nh);
-  const int num_timesteps = getRosParam<int>("num_timesteps", nh);
-  const float norm_exp_kernel_gamma = 
+  int controls_frequency = 
+    getRosParam<int>("controls_frequency", nh);
+  int num_timesteps = getRosParam<int>("num_timesteps", nh);
+  float norm_exp_kernel_gamma = 
     getRosParam<float>("norm_exp_kernel_gamma", nh);
-  const int num_optimization_iters = 
+  int num_optimization_iters = 
     getRosParam<int>("num_optimization_iters", nh);
-  const int optimization_stride = 
+  int optimization_stride = 
     getRosParam<int>("optimization_stride", nh);
-  Controller* actual_state_controller = 
-    new Controller(model, costs, num_timesteps, controls_frequency, 
-        norm_exp_kernel_gamma, wheel_speed_exploration_standard_deviation, 
-        init_u, num_optimization_iters, optimization_stride);
   return new Controller(model, costs, num_timesteps, controls_frequency, 
-        norm_exp_kernel_gamma, wheel_speed_exploration_standard_deviation, 
+        norm_exp_kernel_gamma, controls_exploration_variance, 
         init_u, num_optimization_iters, optimization_stride);
 }
 
@@ -133,9 +132,9 @@ Controller* createController(ros::NodeHandle nh){
  */
 Plant* createPlant(ros::NodeHandle nh){
   const bool debug_mode = getRosParam<bool>("debug_mode", nh);
-  const float controls_frequency = 
-    getRosParam<float>("controls_frequency", nh);
-  return new AutorallyPlant(nh, nh, debug_mode, controls_frequency, false);
+  const int controls_frequency = 
+    getRosParam<int>("controls_frequency", nh);
+  return new Plant(nh, nh, debug_mode, controls_frequency, false);
 }
 
 /**
@@ -146,11 +145,11 @@ Plant* createPlant(ros::NodeHandle nh){
  * @return A dynamic reconfigure server object that must be kept alive for 
  *         dynamic reconfigure to function.
  */
-dynamic_reconfigure::Server<Config> initDynamicReconfigure(Plant* plant){
-  dynamic_reconfigure::Server<Config> server;
+std::shared_ptr<dynamic_reconfigure::Server<Config>> initDynamicReconfigure(Plant* plant){
+  auto server = std::make_shared<dynamic_reconfigure::Server<Config>>();
   dynamic_reconfigure::Server<Config>::CallbackType callback_f;
   callback_f = boost::bind(&Plant::dynRcfgCall, plant, _1, _2);
-  server.setCallback(callback_f);
+  server->setCallback(callback_f);
 
   return server;
 }
@@ -165,28 +164,31 @@ int main(int argc, char** argv) {
 
   DynamicsModel* model =  createDynamicsModel(mppi_node);
 
-  Controller* predicted_state_controller =  createController(mppi_node);
+  Controller* predicted_state_controller = createController(model, costs, mppi_node);
+  Controller* actual_state_controller = createController(model, costs, mppi_node);
 
   Plant* robot_plant = createPlant(mppi_node);
 
-  dynamic_reconfigure::Server<Config> dynamic_reconfigure_server = 
+  std::shared_ptr<dynamic_reconfigure::Server<Config>> dynamic_reconfigure_server = 
     initDynamicReconfigure(robot_plant);
 
+  SystemParams params;
+  loadParams(&params, mppi_node);
   boost::thread optimizer;
   std::atomic<bool> is_alive(true);
   optimizer = boost::thread(
-      &runControlLoop<Controller>, predicted_state_controller, 
-      actual_state_controller, robot, &params, &mppi_node, &is_alive);
+      &omniWheelRobotRunControlLoop<Controller, Plant>, predicted_state_controller, 
+      actual_state_controller, robot_plant, &params, &mppi_node, &is_alive);
 
   ros::spin();
 
   //Shutdown procedure
   is_alive.store(false);
   optimizer.join();
-  robot->shutdown();
+  robot_plant->shutdown();
   actual_state_controller->deallocateCudaMem();
   predicted_state_controller->deallocateCudaMem();
-  delete robot;
+  delete robot_plant;
   delete actual_state_controller;
   delete predicted_state_controller;
   delete costs;

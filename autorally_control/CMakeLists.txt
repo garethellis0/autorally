@@ -24,7 +24,8 @@ set(BUILD_FLAGS "-std=c++11 -Wuninitialized")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BUILD_FLAGS}")
 
 generate_dynamic_reconfigure_options(cfg/gpsWaypoint_params.cfg
-				     cfg/PathIntegralParams.cfg)
+				     cfg/PathIntegralParams.cfg
+             cfg/OmniWheelRobotPathIntegralParams.cfg)
 
 catkin_package(
   DEPENDS Boost

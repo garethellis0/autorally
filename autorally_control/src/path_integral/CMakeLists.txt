@@ -15,6 +15,9 @@ target_link_libraries(autorally_plant ${catkin_LIBRARIES})
 add_library(param_getter param_getter.cpp)
 target_link_libraries(param_getter ${catkin_LIBRARIES})
 
+add_library(omni_wheel_robot_plant omni_wheel_robot_plant.cpp)
+target_link_libraries(omni_wheel_robot_plant ${catkin_LIBRARIES})
+
 ################################################################################
 #Now build the CUDA executables (only if CUDA is installed)
 ################################################################################
@@ -74,6 +77,22 @@ add_dependencies(path_integral_nn autorally_msgs_gencpp ${PROJECT_NAME}_gencfg)
 target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__)
+
+####################################################################################
+#Executable for the basis function model
+####################################################################################
+
+cuda_add_executable(path_integral_omni_wheel_robot
+                    path_integral_omni_wheel_robot_main.cu
+                    omni_wheel_robot_plant
+                    param_getter
+                    )
+add_dependencies(path_integral_omni_wheel_robot autorally_msgs_gencpp ${PROJECT_NAME}_gencfg)
+target_link_libraries(path_integral_omni_wheel_robot /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+###################################################################################
+#Executable for the neural network model
+###################################################################################
 
 ####################################################################################
 #Executable for monitoring the status of mppi

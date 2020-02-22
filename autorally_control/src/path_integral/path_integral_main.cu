@@ -93,7 +93,9 @@ int main(int argc, char** argv) {
   //Define the internal dynamics model for mppi
   float2 control_constraints[2] = {make_float2(-.99, .99), make_float2(-.99, params.max_throttle)};
   DynamicsModel* model = new DynamicsModel(1.0/params.hz, control_constraints);
-  model->loadParams(params.model_path); //Load the model parameters from the launch file specified path
+
+  // TODO: probably don't need this
+  model->loadParams(params.model_path); 
 
   int optimization_stride = getRosParam<int>("optimization_stride", mppi_node);
 
