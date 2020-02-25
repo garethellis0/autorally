@@ -13,14 +13,31 @@
 
 namespace autorally_control {
 
-OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, bool debug_mode, int hz)
-  : OmniWheelRobotPlant(global_node, global_node, debug_mode, hz, false){};
+OmniWheelRobotPlant::OmniWheelRobotPlant(
+    std::string robot_state_ipc_queue_name,
+    std::string robot_wheel_commands_ipc_queue_name,
+    ros::NodeHandle global_and_mppi_node, bool debug_mode, int hz)
+  : OmniWheelRobotPlant(
+      robot_state_ipc_queue_name,
+      robot_wheel_commands_ipc_queue_name,
+      global_and_mppi_node, global_and_mppi_node, debug_mode, hz, false){};
 
-OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeHandle mppi_node, 
-                               bool debug_mode, int hz, bool nodelet)
+OmniWheelRobotPlant::OmniWheelRobotPlant(
+    std::string robot_state_ipc_queue_name,
+    std::string robot_wheel_commands_ipc_queue_name,
+    ros::NodeHandle global_node, ros::NodeHandle mppi_node, 
+                               bool debug_mode, int hz, bool nodelet) :
+    robot_state_message_queue_name(robot_state_ipc_queue_name),
+    robot_wheel_commands_message_queue_name(robot_wheel_commands_ipc_queue_name),
+    robot_state_message_queue(boost::interprocess::open_or_create,
+                              robot_state_ipc_queue_name.c_str(), MAX_QUEUE_SIZE,
+                              sizeof(RobotStateMsgQueueEntry)),
+    robot_wheel_commands_message_queue(boost::interprocess::open_or_create,
+                                       robot_wheel_commands_ipc_queue_name.c_str(),
+                                       MAX_QUEUE_SIZE, sizeof(RobotWheelCommandsMsgQueueEntry)),
+    _in_destructor(false)
 {
   nodeNamespace_ = mppi_node.getNamespace(); 
-  std::string pose_estimate_name = getRosParam<std::string>("pose_estimate", mppi_node);
   debug_mode_ = getRosParam<bool>("debug_mode", mppi_node);
   numTimesteps_ = getRosParam<int>("num_timesteps", mppi_node);
   useFeedbackGains_ = getRosParam<bool>("use_feedback_gains", mppi_node);
@@ -30,16 +47,12 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeH
   stateSequence_.resize(STATE_DIM*numTimesteps_);
 
   //Initialize the publishers.
-  control_pub_ = mppi_node.advertise<autorally_msgs::wheelCommands>("wheelCommands", 1);
   path_pub_ = mppi_node.advertise<nav_msgs::Path>("nominalPath", 1);
-  subscribed_pose_pub_ = mppi_node.advertise<nav_msgs::Odometry>("subscribedPose", 1);
   status_pub_ = mppi_node.advertise<autorally_msgs::pathIntegralStatus>("mppiStatus", 1);
   timing_data_pub_ = mppi_node.advertise<autorally_msgs::pathIntegralTiming>("timingInfo", 1);
   debug_controller_type_pub_ = mppi_node.advertise<visualization_msgs::Marker>("controllerTypeDebug", 1);
   
   //Initialize the subscribers.
-  pose_sub_ = global_node.subscribe(pose_estimate_name, 1, &OmniWheelRobotPlant::poseCall, this,
-                                  ros::TransportHints().tcpNoDelay());
   //Timer callback for path publisher
   pathTimer_ = mppi_node.createTimer(ros::Duration(0.033), &OmniWheelRobotPlant::pubPath, this);
   statusTimer_ = mppi_node.createTimer(ros::Duration(0.033), &OmniWheelRobotPlant::pubStatus, this);
@@ -83,6 +96,22 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeH
   else{
     ROS_WARN("DEBUG MODE is set to TRUE. DEBUG MODE must be FALSE in order to be launched from a remote machine. \n");
   }
+
+  // Start thread to receive new robot states
+  receive_robot_state_thread =
+      boost::thread([this]() { return receiveRobotStatesLoop(); });
+}
+
+OmniWheelRobotPlant::~OmniWheelRobotPlant(){
+  // Stop the thread continuously receiving robot states
+  _in_destructor = true;
+  receive_robot_state_thread.join();
+
+  // Close message queues
+  boost::interprocess::message_queue::remove(
+      robot_state_message_queue_name.c_str());
+  boost::interprocess::message_queue::remove(
+      robot_wheel_commands_message_queue_name.c_str());
 }
 
 void OmniWheelRobotPlant::setSolution(std::vector<float> traj, std::vector<float> controls, 
@@ -152,44 +181,48 @@ void OmniWheelRobotPlant::displayDebugImage(const ros::TimerEvent&)
   }
 }
 
-void OmniWheelRobotPlant::poseCall(nav_msgs::Odometry pose_msg)
+void OmniWheelRobotPlant::newStateCallback(RobotStateMsgQueueEntry new_state)
 {
   if (poseCount_ == 0){
     ROS_INFO(" First pose estimate received. \n");
   }
-  boost::mutex::scoped_lock lock(access_guard_);
-  //Update the timestamp
-  last_pose_call_ = pose_msg.header.stamp;
-  poseCount_++;
-  //Set activated to true --> we are receiving state messages.
-  activated_ = true;
-  //Update position
-  full_state_.x_pos = pose_msg.pose.pose.position.x;
-  full_state_.y_pos = pose_msg.pose.pose.position.y;
-  //Grab the quaternion
-  float q0 = pose_msg.pose.pose.orientation.w;
-  float q1 = pose_msg.pose.pose.orientation.x;
-  float q2 = pose_msg.pose.pose.orientation.y;
-  float q3 = pose_msg.pose.pose.orientation.z;
-  full_state_.yaw = atan2(2*q1*q2 + 2*q0*q3, q1*q1 + q0*q0 - q3*q3 - q2*q2);
 
-  //Don't allow heading to wrap around
-  if (last_heading_ > 3.0 && full_state_.yaw < -3.0){
-    heading_multiplier_ += 1;
-  }
-  else if (last_heading_ < -3.0 && full_state_.yaw > 3.0){
-    heading_multiplier_ -= 1;
-  }
-  last_heading_ = full_state_.yaw;
-  full_state_.yaw = full_state_.yaw + heading_multiplier_*2*3.14159265359;
+  // TODO: this should be it's own function
+  {
+    boost::mutex::scoped_lock lock(access_guard_);
+    // Update the timestamp
+    last_pose_call_ = ros::Time(
+        new_state.timestamp_secs, 
+        new_state.timestamp_nano_secs_correction);
+    poseCount_++;
+    //Set activated to true --> we are receiving state messages.
+    activated_ = true;
+    //Update position
+    full_state_.x_pos = new_state.x_pos_mm / 1000.0;
+    full_state_.y_pos = new_state.y_pos_mm / 10000.0;
+    full_state_.yaw = new_state.yaw_milli_rad / 1000.0;
 
-  //Update the world frame velocity
-  full_state_.x_vel = pose_msg.twist.twist.linear.x;
-  full_state_.y_vel = pose_msg.twist.twist.linear.y;
-  //Update the body frame longitudenal and lateral velocity
-  full_state_.x_vel = cos(full_state_.yaw)*full_state_.x_vel + sin(full_state_.yaw)*full_state_.y_vel;
-  full_state_.y_vel = -sin(full_state_.yaw)*full_state_.x_vel + cos(full_state_.yaw)*full_state_.y_vel;
-  full_state_.angular_vel = -pose_msg.twist.twist.angular.z;
+    //Don't allow heading to wrap around
+    if (last_heading_ > 3.0 && full_state_.yaw < -3.0){
+      heading_multiplier_ += 1;
+    }
+    else if (last_heading_ < -3.0 && full_state_.yaw > 3.0){
+      heading_multiplier_ -= 1;
+    }
+    last_heading_ = full_state_.yaw;
+    full_state_.yaw = full_state_.yaw + heading_multiplier_*2*3.14159265359;
+
+    //Update the world frame velocity
+    full_state_.x_vel = new_state.x_vel_mm_per_s / 1000.0;
+    full_state_.y_vel = new_state.y_vel_mm_per_s / 1000.0;
+    full_state_.angular_vel = new_state.angular_vel_milli_rad_per_s / 1000.0;
+
+    //Update the body frame longitudenal and lateral velocity
+    full_state_.x_vel_body_frame = cos(full_state_.yaw)*full_state_.x_vel + 
+                                   sin(full_state_.yaw)*full_state_.y_vel;
+    full_state_.y_vel_body_frame = -sin(full_state_.yaw)*full_state_.x_vel + 
+                                   cos(full_state_.yaw)*full_state_.y_vel;
+  }
 
   //Interpolate and publish the current control
   double timeFromLastOpt = (last_pose_call_ - solutionTs_).toSec();
@@ -231,6 +264,40 @@ void OmniWheelRobotPlant::poseCall(nav_msgs::Odometry pose_msg)
   }
 }
 
+void OmniWheelRobotPlant::receiveRobotStatesLoop(){
+  while (!_in_destructor)
+  {
+    // We use the version of receive with a timeout so that we can
+    // regularly check if this class was destructed, and stop the loop
+    // if so
+    const boost::posix_time::ptime t_timeout =
+        boost::posix_time::microsec_clock::universal_time() +
+        boost::posix_time::milliseconds(IPC_QUEUE_TIMEOUT_MS);
+    RobotStateMsgQueueEntry new_state;
+    size_t received_size  = 0;
+    unsigned int priority = 0;
+
+    // TODO
+    // For some reason boost will only allow a minimum max message
+    // size of 100, even though the queue is configured to have a 
+    // max message size equal to the struct size. 
+    const bool data_available = robot_state_message_queue.timed_receive(
+        &new_state, 100, received_size, priority,
+        t_timeout);
+
+    if (data_available && received_size == sizeof(new_state))
+    {
+        std::cout << "Received State: (" << new_state << ")" << std::endl;
+        newStateCallback(new_state);
+    }
+    else if (data_available && received_size != sizeof(new_state))
+    {
+        ROS_WARN_STREAM("Received message of size " << received_size
+                     << " which is different from the expected size "
+                     << sizeof(new_state));
+    }
+  }
+}
 
 void OmniWheelRobotPlant::pubPath(const ros::TimerEvent&)
 {
@@ -264,32 +331,42 @@ void OmniWheelRobotPlant::pubPath(const ros::TimerEvent&)
   path_msg_.header.stamp = begin;
   path_msg_.header.frame_id = "odom";
   path_pub_.publish(path_msg_);
-  subscribed_pose_pub_.publish(subscribed_state);
 }
 
 void OmniWheelRobotPlant::pubControl(OmniWheelRobotPlant::ControlVector wheel_commands)
 {
-  autorally_msgs::wheelCommands control_msg; ///< Autorally control message initialization.
-  //Publish the steering and throttle commands
+  RobotWheelCommandsMsgQueueEntry wheel_commands_queue_entry;
+  ros::Time curr_time = ros::Time::now();
+  wheel_commands_queue_entry.timestamp_secs = curr_time.sec;
+  wheel_commands_queue_entry.timestamp_nano_secs_correction = curr_time.nsec;
+
+  const boost::posix_time::ptime t_timeout =
+      boost::posix_time::microsec_clock::universal_time() +
+      boost::posix_time::milliseconds(IPC_QUEUE_TIMEOUT_MS);
+
   if (wheel_commands.hasNaN()){ 
     ROS_INFO("NaN Control Input Detected");
-    control_msg.front_left_rad_per_s = 0;
-    control_msg.front_right_rad_per_s = 0;
-    control_msg.back_left_rad_per_s = 0;
-    control_msg.back_right_rad_per_s = 0;
-    control_msg.header.stamp = ros::Time::now();
+    wheel_commands_queue_entry.front_left_milli_rad_per_s = 0;
+    wheel_commands_queue_entry.front_right_milli_rad_per_s = 0;
+    wheel_commands_queue_entry.back_left_milli_rad_per_s = 0;
+    wheel_commands_queue_entry.back_right_milli_rad_per_s = 0;
 
-    control_pub_.publish(control_msg);
+    robot_wheel_commands_message_queue.timed_send(
+        &wheel_commands_queue_entry, sizeof(wheel_commands_queue_entry), 0, t_timeout);
+
     ros::shutdown(); //No use trying to recover, quitting is the best option.
-  }
-  else {
-    control_msg.front_left_rad_per_s = wheel_commands(0);
-    control_msg.front_right_rad_per_s = wheel_commands(1);
-    control_msg.back_left_rad_per_s = wheel_commands(2);
-    control_msg.back_right_rad_per_s = wheel_commands(3);
-    control_msg.header.stamp = ros::Time::now();
+  } else {
+    wheel_commands_queue_entry.front_left_milli_rad_per_s = wheel_commands(0) * 1000;
+    wheel_commands_queue_entry.front_right_milli_rad_per_s = wheel_commands(1) * 1000;
+    wheel_commands_queue_entry.back_left_milli_rad_per_s = wheel_commands(2) * 1000;
+    wheel_commands_queue_entry.back_right_milli_rad_per_s = wheel_commands(3) * 1000;
 
-    control_pub_.publish(control_msg);
+    ROS_INFO_STREAM("Transmitting Commands: " << wheel_commands_queue_entry);
+    bool send_succeeded = robot_wheel_commands_message_queue.timed_send(
+        &wheel_commands_queue_entry, sizeof(wheel_commands_queue_entry), 0, t_timeout);
+    if (!send_succeeded){
+      ROS_WARN_STREAM("Failed to send wheel commands, queue probably full!");
+    }
   }
 }
 
@@ -422,7 +499,6 @@ void OmniWheelRobotPlant::shutdown()
   //Shutdown timers, subscribers, and dynamic reconfigure
   boost::mutex::scoped_lock lock(access_guard_);
   path_pub_.shutdown();
-  pose_sub_.shutdown();
   pathTimer_.stop();
   statusTimer_.stop();
   debugImgTimer_.stop();

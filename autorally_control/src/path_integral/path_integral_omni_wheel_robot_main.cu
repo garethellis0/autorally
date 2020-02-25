@@ -134,7 +134,8 @@ Plant* createPlant(ros::NodeHandle nh){
   const bool debug_mode = getRosParam<bool>("debug_mode", nh);
   const int controls_frequency = 
     getRosParam<int>("controls_frequency", nh);
-  return new Plant(nh, nh, debug_mode, controls_frequency, false);
+  return new Plant("robot_state", "robot_wheel_commands", nh, debug_mode, 
+      controls_frequency);
 }
 
 /**

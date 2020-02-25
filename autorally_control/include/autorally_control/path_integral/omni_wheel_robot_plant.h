@@ -37,9 +37,77 @@
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
 #include <atomic>
 
 namespace autorally_control {
+
+// These structs MUST be kept exactly in sync with the ones 
+// in the thunderbots code, or extremely nasty things will happen. 
+// TODO: put this in a shared header somewhere
+struct RobotStateMsgQueueEntry
+{
+    int32_t x_pos_mm;
+    int32_t y_pos_mm;
+    int32_t yaw_milli_rad;
+
+    int32_t x_vel_mm_per_s;
+    int32_t y_vel_mm_per_s;
+    int32_t angular_vel_milli_rad_per_s;
+
+    // We represent the timestamp in two parts, with the final timestamp
+    // being the sum of the two
+    int32_t timestamp_secs;
+    int32_t timestamp_nano_secs_correction;
+
+    /**
+     * Set the timestamp variables from a time given in seconds
+     */
+    void setTimestampFromSecs(double t_secs)
+    {
+        timestamp_secs                 = std::floor(t_secs);
+        timestamp_nano_secs_correction = std::floor((t_secs - timestamp_secs) * 1e9);
+    }
+};
+inline std::ostream& operator<<(std::ostream& o, const RobotStateMsgQueueEntry& state)
+{
+    // clang-format off
+    o << "x_pos_mm: " << state.x_pos_mm 
+      << ", y_pos_mm: " << state.y_pos_mm 
+      << ", yaw_milli_rad: " << state.yaw_milli_rad 
+      << ", x_vel_mm_per_s: " << state.x_vel_mm_per_s 
+      << ", y_vel_mm_per_s: " << state.y_vel_mm_per_s
+      << ", angular_vel_milli_rad_per_s: " << state.angular_vel_milli_rad_per_s
+      << ", timestamp_secs: " << state.timestamp_secs
+      << ", timestamp_nano_secs_correction: " << state.timestamp_nano_secs_correction;
+    // clang-format on
+    return o;
+}
+struct RobotWheelCommandsMsgQueueEntry
+{
+    int32_t front_right_milli_rad_per_s;
+    int32_t front_left_milli_rad_per_s;
+    int32_t back_right_milli_rad_per_s;
+    int32_t back_left_milli_rad_per_s;
+
+    // We represent the timestamp in two parts, with the final timestamp
+    // being the sum of the two
+    int32_t timestamp_secs;
+    int32_t timestamp_nano_secs_correction;
+};
+inline std::ostream& operator<<(std::ostream& o,
+                                const RobotWheelCommandsMsgQueueEntry& cmds)
+{
+    // clang-format off
+    o << "Front Right: "                      << cmds.front_right_milli_rad_per_s 
+      << ", Front Left: "                     << cmds.front_left_milli_rad_per_s
+      << ", Back Right: "                     << cmds.back_right_milli_rad_per_s 
+      << ", Back Left: "                      << cmds.back_left_milli_rad_per_s
+      << ", timestamp_secs: "                 << cmds.timestamp_secs
+      << ", timestamp_nano_secs_correction: " << cmds.timestamp_nano_secs_correction;
+    // clang-format on
+    return o;
+}
 
 /**
  * This enum denotes what controller was used for an operation
@@ -127,6 +195,11 @@ public:
   * @brief Constructor for OmniWheelRobotPlant, takes the a ros node handle and 
   *        initalizes publishers and subscribers.
   *
+  * @param robot_state_ipc_queue_name The name of the IPC message queue over 
+  *                                   which robot state  updates will be passed
+  * @param robot_wheel_commands_ipc_queue_name The name of the IPC message queue 
+  *                                            over which to sent wheel commands 
+  *                                            to the robot
   * @param global_node A nodehandle that will be used to interface with the
   *                    outside world (ex. getting robot state)
   * @param mppi_node A nodehandle that will be used to get the parameters for
@@ -135,8 +208,10 @@ public:
   * @param hz The frequency of the control publisher.
   * @param nodelet Whether or not this node is running as part of a nodelet
   */
-  OmniWheelRobotPlant(ros::NodeHandle global_node, ros::NodeHandle mppi_node, 
-                 bool debug_mode, int hz, bool nodelet);
+  OmniWheelRobotPlant(std::string robot_state_ipc_queue_name,
+                      std::string robot_wheel_commands_ipc_queue_name,
+                      ros::NodeHandle global_node, ros::NodeHandle mppi_node, 
+                      bool debug_mode, int hz, bool nodelet);
 
   /**
   * @brief Constructor for OmniWheelRobotPlant, takes the a ros node handle and 
@@ -144,18 +219,26 @@ public:
   *
   * This constructor assumes this node is not running as part of a nodelet
   *
+  * @param robot_state_ipc_queue_name The name of the IPC message queue over 
+  *                                   which robot state  updates will be passed
+  * @param robot_wheel_commands_ipc_queue_name The name of the IPC message queue 
+  *                                            over which to sent wheel commands 
+  *                                            to the robot
   * @param global_and_mppi_node A nodehandle that will be used to interface 
   *                             with the outside world (ex. getting robot state)
   *                             and also get the MPPI parameters
   * @param debug_mode Enable debugging, including visualizations
   * @param hz The frequency of the control publisher.
   */
-  OmniWheelRobotPlant(ros::NodeHandle global_node, bool debug_mode, int hz);
+  OmniWheelRobotPlant(std::string robot_state_ipc_queue_name,
+                      std::string robot_wheel_commands_ipc_queue_name,
+                      ros::NodeHandle global_and_mppi_node, 
+                      bool debug_mode, int hz);
 
   /**
-  * @brief Callback for /pose_estimate subscriber.
-  */
-  void poseCall(nav_msgs::Odometry pose_msg);
+   * Destructor for this class
+   */
+  ~OmniWheelRobotPlant();
 
   /**
   * @brief Publishes the controller's nominal path.
@@ -300,9 +383,15 @@ public:
 
 protected:
 
+  static const int MAX_QUEUE_SIZE     = 2;
+
+  const int IPC_QUEUE_TIMEOUT_MS = 100;
+
   typedef struct
   { 
-    // Actual robot state
+    // Robot state in the global frame
+    // TODO: these should be suffixed with the frame they're in. Unless 
+    //       otherwise noted, they should all be in the global frame
     float x_pos;
     float y_pos;
     float yaw;
@@ -313,35 +402,22 @@ protected:
     float y_accel;
     float angular_accel;
 
-    
+    // Robot state in the local/body frame
+    float x_vel_body_frame;
+    float y_vel_body_frame;
 
-    // TODO: deleteme
-    // //X-Y-theta position
-    // float x_pos;
-    // float y_pos;
-    // float z_pos;
-    // //1-2-3 Euler angles
-    // float roll;
-    // float pitch;
-    // float yaw;
-    // //Quaternions
-    // float q0;
-    // float q1;
-    // float q2;
-    // float q3;
-    // //X-Y-Z velocity.
-    // float x_vel;
-    // float y_vel;
-    // float z_vel;
-    // //Body frame velocity
-    // float u_x;
-    // float u_y;
-    // //Euler angle derivatives
-    // float yaw_mder;
-    // //Current servo commands
-    // float steering;
-    // float throttle;
   } FullState;
+
+  /**
+   * @brief Callback for new robot state
+   */
+  void newStateCallback(RobotStateMsgQueueEntry new_state);
+
+  /**
+   * An infinite loop that receives robot states and passes them to the 
+   * robot state callback
+   */
+  void receiveRobotStatesLoop();
   
   /**
    * Get the current state of this plant
@@ -387,14 +463,10 @@ protected:
 
   ros::Time last_pose_call_; ///< Timestamp of the last pose callback.
 
-  ros::Publisher control_pub_; ///< Publisher of autorally_msgs::chassisCommand type on topic servoCommand.
   ros::Publisher status_pub_; ///< Publishes the status (0 good, 1 neutral, 2 bad) of the controller
-  ros::Publisher subscribed_pose_pub_; ///< Publisher of the subscribed pose
   ros::Publisher path_pub_; ///< Publisher of nav_mags::Path on topic nominalPath.
   ros::Publisher timing_data_pub_;
   ros::Publisher debug_controller_type_pub_; ///< Publishes points indicating what controller was used where
-  ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
-  ros::Subscriber servo_sub_;
   ros::Timer pathTimer_;
   ros::Timer statusTimer_;
   ros::Timer debugImgTimer_;
@@ -405,6 +477,18 @@ protected:
   geometry_msgs::Point time_delay_msg_; ///< Point message for publishing the observed delay.
   autorally_msgs::pathIntegralStatus status_msg_; ///<pathIntegralStatus message for publishing mppi status
   autorally_msgs::pathIntegralTiming timingData_; ///<pathIntegralStatus message for publishing mppi status
+
+  // The message queue to push robot state updates to, and it's name
+  boost::interprocess::message_queue robot_state_message_queue;
+  const std::string robot_state_message_queue_name;
+
+  // The message queue to read wheel commands from, and it's name
+  boost::interprocess::message_queue robot_wheel_commands_message_queue;
+  const std::string robot_wheel_commands_message_queue_name;
+
+  std::atomic<bool> _in_destructor;
+
+  boost::thread receive_robot_state_thread;
 };
 
 }

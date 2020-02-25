@@ -154,12 +154,14 @@ void omniWheelRobotRunControlLoop(
          controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
      robot->setDebugImage(debug_img);
     }
+
     //Update the state estimate
     if (last_pose_update != robot->getLastPoseTime()){
       optimizationLoopTime = robot->getLastPoseTime() - last_pose_update;
       last_pose_update = robot->getLastPoseTime();
       state = robot->getStateVector();
     }
+
     //Update the cost parameters
     if (robot->hasNewDynRcfg()){
       actual_state_controller->costs_->updateParams_dcfg(robot->getDynRcfgParams());
@@ -186,7 +188,6 @@ void omniWheelRobotRunControlLoop(
       actual_state_controller->computeFeedbackGains(state);
       predicted_state_controller->computeFeedbackGains(state);
     }
-
 
     // TODO: shouldn't neeed to call this here....
     auto feedback_gain = predicted_state_controller->getFeedbackGains().feedback_gain;
