@@ -44,21 +44,22 @@ namespace autorally_control {
 typedef struct
 { 
   bool debug_mode;
-  int hz;
+  //int hz;
+  int controls_frequency;
   int num_timesteps;
-  int num_iters;
+  //int num_iters;
   float x_pos;
   float y_pos;
   float heading;
-  float gamma;
-  float init_steering;
-  float init_throttle;
-  float steering_std;
-  float throttle_std;
-  float max_throttle;
+  //float gamma;
+  //float init_steering;
+  //float init_throttle;
+  //float steering_std;
+  //float throttle_std;
+  //float max_throttle;
   bool use_only_actual_state_controller;
   bool use_only_predicted_state_controller;
-  std::string model_path;
+  //std::string model_path;
 } SystemParams;
 
 inline bool fileExists (const std::string& name) {

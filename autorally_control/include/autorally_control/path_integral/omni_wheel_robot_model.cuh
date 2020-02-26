@@ -45,8 +45,15 @@ class OmniWheelRobotModel: public Managed
 {
 public:
 
+  // The size of the entire state
   static const int STATE_DIM = 9;
+  // The number of kinematic variables in the state
+  static const int KINEMATIC_DIM = 3;
+  // The number of variables in the control input
   static const int CONTROL_DIM = 4;
+  // The dynamics dimension
+  // TODO: better comment here
+  static const int DYNAMICS_DIM = STATE_DIM - KINEMATIC_DIM;
 
   OmniWheelRobotModel() = delete;
 
@@ -197,6 +204,47 @@ public:
   Eigen::Matrix<float, STATE_DIM, 1> state_der_;
 
 private:
+
+  /**
+   * Computes the wheel coefficient of friction for a given speed, in the 
+   * direction the wheel is oriented 
+   * @param wheel_sliding_speed The speed of the wheel, in the direction that 
+   *                            it is orientated
+   * @return The coefficient of friction for the given speed in the direction 
+   *         the wheel is oriented
+   */
+  float computeWheelFrictionCoeffInWheelDir(float wheel_sliding_speed);
+
+  /**
+   * Computes the wheel coefficient of friction for a given speed, tranverse to 
+   * the direction the wheel is oriented 
+   * @param wheel_sliding_speed The speed of the wheel, in the direction 
+   *                            transverse to it is orientated
+   * @return The coefficient of friction for the given speed in the direction 
+   *         transverse to the direction the wheel is oriented
+   */
+  float computeWheelFrictionCoeffInTransverseDir(float wheel_sliding_speed);
+
+  // The angle of the front two wheels, measured relative to a vector
+  // pointing directly forward (+x) on the robot
+  static constexpr float FRONT_WHEEL_ANGLE_RAD = 1.047197;
+  // The angle of the front two wheels, measured relative to a vector
+  // pointing directly backwards (-x) on the robot
+  static constexpr float REAR_WHEEL_ANGLE_RAD = 0.785;
+  // The mass of the robot
+  static constexpr float MASS_KG = 2.0;
+  // The radius of the robot, the center of each wheel is assumed to be 
+  // displaced from the robot center by this amount
+  static constexpr float ROBOT_RADIUS_M = 0.2;
+  // The radius of each wheel 
+  static constexpr float WHEEL_RADIUS_M = 0.02;
+  // The coefficient of friction for the wheels when the wheel is being
+  // translated parallel to it's direction of rotation
+  static constexpr float WHEEL_FRICTION_COEFF_IN_WHEEL_DIR = 0.25;
+  // The coefficient of friction for the wheels when the wheel is 
+  // travelling in the direction perpendicular to it's direction of
+  // rotation
+  static constexpr float WHEEL_FRICTION_COEFF_IN_TRANSVERSE_DIR = 0.09;
 
   double dt_;
   double max_abs_wheel_speed_;

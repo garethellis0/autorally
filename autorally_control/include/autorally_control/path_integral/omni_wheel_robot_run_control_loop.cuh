@@ -115,10 +115,10 @@ void omniWheelRobotRunControlLoop(
   double avgOptimizationTickTime = 0; //Avg. time it takes to get to the sleep at end of loop
   double avgSleepTime = 0; //Average time spent sleeping
   ros::Time last_pose_update = robot->getLastPoseTime();
-  ros::Duration optimizationLoopTime(optimization_stride/(1.0*params->hz));
+  ros::Duration optimizationLoopTime(optimization_stride/(1.0*params->controls_frequency));
 
   //Set the loop rate
-  std::chrono::milliseconds ms{(int)(optimization_stride*1000.0/params->hz)};
+  std::chrono::milliseconds ms{(int)(optimization_stride*1000.0/params->controls_frequency)};
 
   if (!params->debug_mode){
     while(last_pose_update == robot->getLastPoseTime() && is_alive->load()){ //Wait until we receive a pose estimate
@@ -145,14 +145,14 @@ void omniWheelRobotRunControlLoop(
       // TODO: need two debug windows, (actual and predicted states)
 
      // display costs around actual robot state
-     //cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
-     //robot->setDebugImage(debug_img);
+     cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
+     robot->setDebugImage(debug_img);
 
      // display costs around predicted robot state
-     std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
-     cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
-         controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
-     robot->setDebugImage(debug_img);
+     //std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
+     //cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
+     //    controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
+     //robot->setDebugImage(debug_img);
     }
 
     //Update the state estimate
@@ -170,7 +170,7 @@ void omniWheelRobotRunControlLoop(
   
     // Figure out how many controls have been published since we were last here 
     // and slide the control and state sequence by that much.
-    int stride = round(optimizationLoopTime.toSec()*params->hz);
+    int stride = round(optimizationLoopTime.toSec()*params->controls_frequency);
     if (status != 0){
       stride = optimization_stride;
     }
@@ -209,6 +209,10 @@ void omniWheelRobotRunControlLoop(
 
     // TODO: clean this up, gross amount of duplication
     ControllerType controller_used = ControllerType::NONE;
+
+    // TODO: delete this
+    controller_to_use = ControllerType::ACTUAL_STATE;
+
     switch(controller_to_use){
       case ControllerType::NONE:
         if(actual_state_controller->getComputedTrajectoryCost() < 
@@ -249,6 +253,18 @@ void omniWheelRobotRunControlLoop(
         break;
     }
 
+    // TODO: remove this printout
+    std::cout << "Control Solution: ";
+    for (auto elem : controlSolution) {
+      std::cout << elem << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "State Solution: ";
+    for (auto elem : stateSolution) {
+      std::cout << elem << ", ";
+    }
+    std::cout << std::endl;
+
     //Set the updated solution for execution
     robot->setSolution(stateSolution, controlSolution, feedback_gain, 
         last_pose_update, avgOptimizationLoopTime, controller_used);
@@ -269,7 +285,7 @@ void omniWheelRobotRunControlLoop(
     std::chrono::duration<double, std::milli> fp_ms = std::chrono::steady_clock::now() - loop_start;
     double optimizationTickTime = fp_ms.count();
     int count = 0;
-    while(is_alive->load() && (fp_ms < ms || ((robot->getLastPoseTime() - last_pose_update).toSec() < (1.0/params->hz - 0.0025) && status == 0))) {
+    while(is_alive->load() && (fp_ms < ms || ((robot->getLastPoseTime() - last_pose_update).toSec() < (1.0/params->controls_frequency - 0.0025) && status == 0))) {
       usleep(50);
       fp_ms = std::chrono::steady_clock::now() - loop_start;
       count++;

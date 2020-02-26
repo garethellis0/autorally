@@ -1,5 +1,11 @@
 #ifndef VECTOR_MATH_H
 #define VECTOR_MATH_H
+/**
+ * @brief A small vector math library, intended for use with CUDA code
+ */
+
+// TODO: handle cases where the output is the same vector as (one of) the input(s)
+//       *PARTICUARLY ADDITION*
 
 // This macro allows us to compile functions without nvcc for unit testing
 // purposes
@@ -9,16 +15,21 @@
 #define CUDA_HOSTDEV
 #endif
 
-// TODO: if we can specify the size as part of the arg, should remove\
-//       that requirement from all the jdocs, it's duplicate info
+/**
+ * Multiply the given vector by a scalar
+ * 
+ * @param[in] v The vector
+ * @param[in] s The scalar
+ * @param[out] result This will be set to s*v
+ */
+CUDA_HOSTDEV static void multiplyVector3ByScalar(float v[3], float s, float result[3]);
 
 /**
  * Add two vectors of length 3 together
  * 
- * @param[in] v1 The first vector, assumed to be a 3-long array
- * @param[in] v2 The second vector, assumed to be a 3-long array
+ * @param[in] v1 The first vector
+ * @param[in] v2 The second vector
  * @param[out] result This will be set to v1+v2. 
- *                    This must be pre-allocated to be of at least length 3.
  */
 CUDA_HOSTDEV static void addVector3(float v1[3], float v2[3], float result[3]){
   for (int i = 0; i < 3; i++){
@@ -31,10 +42,9 @@ CUDA_HOSTDEV static void addVector3(float v1[3], float v2[3], float result[3]){
  * 
  * ie. return M*v
  * 
- * @param[in] M The matrix to multiply the given vector by
- * @param[in] v The vector to multiply by the given matrix
- * @param[out] result This will be set to the result of M*v, it must be 
- *                    pre-allocated to be of at least length 3.
+ * @param[in] M The matrix to multiply the given vector by.
+ * @param[in] v The vector to multiply by the given matrix.
+ * @param[out] result This will be set to the result of M*v
  */
 CUDA_HOSTDEV static void multiplyVector3By3x3Matrix(float M[3][3], float v[3], float result[3]){
   for (int i = 0; i < 3; i++){
@@ -49,8 +59,8 @@ CUDA_HOSTDEV static void multiplyVector3By3x3Matrix(float M[3][3], float v[3], f
 /**
  * Compute the dot product of two vectors
  * 
- * @param[in] v1 The first vector, assumed to be a 3-long array
- * @param[in] v2 The second vector, assumed to be a 3-long array
+ * @param[in] v1 The first vector
+ * @param[in] v2 The second vector
  * 
  * @return The dot product of v1 and v2
  */
@@ -65,10 +75,9 @@ CUDA_HOSTDEV static float dotProductVector3(float v1[3], float v2[3]){
 /**
  * Compute the cross product of two vectors
  * 
- * @param[in] v1 The first vector, assumed to be a 3-long array
- * @param[in] v2 The second vector, assumed to be a 3-long array
- * @param[out] result The result of taking the cross product of v1 and v2. 
- *                    This must be pre-allocated to be of at least length 3.
+ * @param[in] v1 The first vector
+ * @param[in] v2 The second vector
+ * @param[out] result The result of taking the cross product of v1 and v2
  */
 CUDA_HOSTDEV static void crossProductVector3(float v1[3], float v2[3], float result[3]){
   result[0] = v1[1]*v2[2] - v1[2]*v2[1];
@@ -76,5 +85,35 @@ CUDA_HOSTDEV static void crossProductVector3(float v1[3], float v2[3], float res
   result[2] = v1[0]*v2[1] - v1[1]*v2[0];
 }
 
+/**
+ * Rotate the given vector by the given amount 
+ *
+ * Rotation is *counterclockwise*, and about the z-axis
+ * 
+ * @param[in] v The vector to rotate
+ * @param[in] rotation_rad The amount to rotate the vector by, in radians
+ * @param[out] result This vector will be set to the result of rotating the
+ *                    given vector by the given amount
+ */
+CUDA_HOSTDEV static void rotateVector3AboutZAxis(float v[3], float rotation_rad, float result[3]);
+
+
+/**
+ * Constructs a matrix that can be multipled by a vector to rotate it
+ *
+ * Rotation is *counterclockwise*, and about the z-axis
+ * 
+ * @param[in] rotation_rad The amount to rotate the vector by, in radians
+ * @param[out] result The created rotation matrix
+ */
+CUDA_HOSTDEV static void createrotationMatrixAboutZAxis(float rotation_rad, float result[3][3]);
+
+/**
+ * Gets the unit vector in the direction of the given vector
+ *
+ * @param[in] v The vector get the unit vector for
+ * @param[out] result A unit vector in the direction of v
+ */
+CUDA_HOSTDEV static void getUnitVectorInDirection(float v[3], float result[3]);
 
 #endif // VECTOR_MATH_H
