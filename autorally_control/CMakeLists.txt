@@ -59,3 +59,6 @@ install(DIRECTORY cfg/cpp/${PROJECT_NAME}/
 install(FILES nodelet_plugins.xml
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
+catkin_add_gtest(vector-math-test test/vector_math_test.cpp)
+#target_link_libraries(omni-wheel-robot-model-test /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES})
