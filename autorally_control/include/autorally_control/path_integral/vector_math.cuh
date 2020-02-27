@@ -24,7 +24,7 @@
  * @param[in] s The scalar
  * @param[out] result This will be set to s*v
  */
-CUDA_HOSTDEV static void multiplyVector3ByScalar(float v[3], float s, float result[3]){
+CUDA_HOSTDEV static void multiplyVector3ByScalar(const float v[3], const float s, float result[3]){
   for (int i = 0; i < 3; i++){
     result[i] = v[i]*s;
   }
@@ -37,7 +37,7 @@ CUDA_HOSTDEV static void multiplyVector3ByScalar(float v[3], float s, float resu
  * @param[in] v2 The second vector
  * @param[out] result This will be set to v1+v2. 
  */
-CUDA_HOSTDEV static void addVector3(float v1[3], float v2[3], float result[3]){
+CUDA_HOSTDEV static void addVector3(const float v1[3], const float v2[3], float result[3]){
   for (int i = 0; i < 3; i++){
     result[i] = v1[i] + v2[i];
   }
@@ -52,7 +52,7 @@ CUDA_HOSTDEV static void addVector3(float v1[3], float v2[3], float result[3]){
  * @param[in] v The vector to multiply by the given matrix.
  * @param[out] result This will be set to the result of M*v
  */
-CUDA_HOSTDEV static void multiplyVector3By3x3Matrix(float M[3][3], float v[3], float result[3]){
+CUDA_HOSTDEV static void multiplyVector3By3x3Matrix(const float M[3][3], const float v[3], float result[3]){
   for (int i = 0; i < 3; i++){
     result[i] = 0;
     for (int j = 0; j < 3; j++){
@@ -70,7 +70,7 @@ CUDA_HOSTDEV static void multiplyVector3By3x3Matrix(float M[3][3], float v[3], f
  * 
  * @return The dot product of v1 and v2
  */
-CUDA_HOSTDEV static float dotProductVector3(float v1[3], float v2[3]){
+CUDA_HOSTDEV static float dotProductVector3(const float v1[3], const float v2[3]){
   float result = 0;
   for (int i = 0; i < 3; i++){
     result += v1[i]*v2[i];
@@ -85,7 +85,7 @@ CUDA_HOSTDEV static float dotProductVector3(float v1[3], float v2[3]){
  * @param[in] v2 The second vector
  * @param[out] result The result of taking the cross product of v1 and v2
  */
-CUDA_HOSTDEV static void crossProductVector3(float v1[3], float v2[3], float result[3]){
+CUDA_HOSTDEV static void crossProductVector3(const float v1[3], const float v2[3], float result[3]){
   result[0] = v1[1]*v2[2] - v1[2]*v2[1];
   result[1] = v1[2]*v2[0] - v1[0]*v2[2];
   result[2] = v1[0]*v2[1] - v1[1]*v2[0];
@@ -99,7 +99,7 @@ CUDA_HOSTDEV static void crossProductVector3(float v1[3], float v2[3], float res
  * @param[in] rotation_rad The amount to rotate the vector by, in radians
  * @param[out] result The created rotation matrix
  */
-CUDA_HOSTDEV static void createRotationMatrixAboutZAxis(float rotation_rad, float result[3][3]){
+CUDA_HOSTDEV static void createRotationMatrixAboutZAxis(const float rotation_rad, float result[3][3]){
   result[0][0] = cos(rotation_rad);
   result[0][1] = -sin(rotation_rad);
   result[0][2] = 0.0;
@@ -122,7 +122,7 @@ CUDA_HOSTDEV static void createRotationMatrixAboutZAxis(float rotation_rad, floa
  *                    given vector by the given amount in the 
  *                    *counterclockwise* direcition
  */
-CUDA_HOSTDEV static void rotateVector3AboutZAxis(float v[3], float rotation_rad, float result[3]){
+CUDA_HOSTDEV static void rotateVector3AboutZAxis(const float v[3], const float rotation_rad, float result[3]){
   float rotation_matrix[3][3];
   createRotationMatrixAboutZAxis(rotation_rad, rotation_matrix);
 
@@ -135,7 +135,7 @@ CUDA_HOSTDEV static void rotateVector3AboutZAxis(float v[3], float rotation_rad,
  * @param[in] dir The direction to get a unit vector in
  * @param[out] result A unit vector in the direction of `dir`
  */
-CUDA_HOSTDEV static void getUnitVectorInDirection(float dir[3], float result[3]){
+CUDA_HOSTDEV static void getUnitVectorInDirection(const float dir[3], float result[3]){
   float length = 0;
   for (int i = 0; i < 3; i++){
     length += pow(dir[i], 2.0);

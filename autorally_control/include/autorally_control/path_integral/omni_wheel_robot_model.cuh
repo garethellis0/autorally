@@ -48,12 +48,12 @@ public:
   // The size of the entire state
   static const int STATE_DIM = 9;
   // The number of kinematic variables in the state
-  static const int KINEMATIC_DIM = 6;
+  static const int KINEMATICS_DIM = 6;
   // The number of variables in the control input
   static const int CONTROL_DIM = 4;
   // The dynamics dimension
   // TODO: better comment here
-  static const int DYNAMICS_DIM = STATE_DIM - KINEMATIC_DIM;
+  static const int DYNAMICS_DIM = STATE_DIM - KINEMATICS_DIM;
 
   OmniWheelRobotModel() = delete;
 
@@ -153,7 +153,7 @@ public:
    * @param theta_s The shared memory allocated for this model and setup via 
    *                `cudaInit` 
    */
-  __device__ void computeDynamics(float* state, float* control, float* state_der, float* theta_s);
+  __host__ __device__ void computeDynamics(float* state, float* control, float* state_der, float* theta_s);
 
   /**
    * Computes the state derivative for the model
@@ -223,7 +223,7 @@ private:
    * @return The coefficient of friction for the given speed in the direction 
    *         transverse to the direction the wheel is oriented
    */
-  float computeWheelFrictionCoeffInTransverseDir(float wheel_sliding_speed);
+  float computeWheelFrictionCoeffInTransverseDir(float wheel_transverse_speed);
 
   // The angle of the front two wheels, measured relative to a vector
   // pointing directly forward (+x) on the robot
@@ -231,11 +231,14 @@ private:
   // The angle of the front two wheels, measured relative to a vector
   // pointing directly backwards (-x) on the robot
   static constexpr float REAR_WHEEL_ANGLE_RAD = 0.785;
-  // The mass of the robot
-  static constexpr float MASS_KG = 2.0;
   // The radius of the robot, the center of each wheel is assumed to be 
   // displaced from the robot center by this amount
   static constexpr float ROBOT_RADIUS_M = 0.2;
+  // The mass of the robot
+  static constexpr float ROBOT_MASS_KG = 2.0;
+  // The moment of inertia of the robot. We init this in the constructor
+  // because it uses pow(radius), but pow is not a constepxr function
+  const float ROBOT_MOMENT_OF_INERTIA;
   // The radius of each wheel 
   static constexpr float WHEEL_RADIUS_M = 0.02;
   // The coefficient of friction for the wheels when the wheel is being
@@ -245,6 +248,10 @@ private:
   // travelling in the direction perpendicular to it's direction of
   // rotation
   static constexpr float WHEEL_FRICTION_COEFF_IN_TRANSVERSE_DIR = 0.09;
+  // The constant used to govern the steepness of the slope between the 
+  // friction coefficient in the wheel direction and the tangent direction
+  // about zero sliding velocity
+  static constexpr float FRICTION_COEFF_TRANSITION_COEFF = 1000;
 
   double dt_;
   double max_abs_wheel_speed_;
