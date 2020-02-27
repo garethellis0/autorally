@@ -48,7 +48,7 @@ public:
   // The size of the entire state
   static const int STATE_DIM = 9;
   // The number of kinematic variables in the state
-  static const int KINEMATIC_DIM = 3;
+  static const int KINEMATIC_DIM = 6;
   // The number of variables in the control input
   static const int CONTROL_DIM = 4;
   // The dynamics dimension

@@ -4,6 +4,8 @@
  * @brief A small vector math library, intended for use with CUDA code
  */
 
+#include <math.h>
+
 // TODO: handle cases where the output is the same vector as (one of) the input(s)
 //       *PARTICUARLY ADDITION*
 
@@ -22,7 +24,11 @@
  * @param[in] s The scalar
  * @param[out] result This will be set to s*v
  */
-CUDA_HOSTDEV static void multiplyVector3ByScalar(float v[3], float s, float result[3]);
+CUDA_HOSTDEV static void multiplyVector3ByScalar(float v[3], float s, float result[3]){
+  for (int i = 0; i < 3; i++){
+    result[i] = v[i]*s;
+  }
+}
 
 /**
  * Add two vectors of length 3 together
@@ -86,19 +92,6 @@ CUDA_HOSTDEV static void crossProductVector3(float v1[3], float v2[3], float res
 }
 
 /**
- * Rotate the given vector by the given amount 
- *
- * Rotation is *counterclockwise*, and about the z-axis
- * 
- * @param[in] v The vector to rotate
- * @param[in] rotation_rad The amount to rotate the vector by, in radians
- * @param[out] result This vector will be set to the result of rotating the
- *                    given vector by the given amount
- */
-CUDA_HOSTDEV static void rotateVector3AboutZAxis(float v[3], float rotation_rad, float result[3]);
-
-
-/**
  * Constructs a matrix that can be multipled by a vector to rotate it
  *
  * Rotation is *counterclockwise*, and about the z-axis
@@ -106,14 +99,52 @@ CUDA_HOSTDEV static void rotateVector3AboutZAxis(float v[3], float rotation_rad,
  * @param[in] rotation_rad The amount to rotate the vector by, in radians
  * @param[out] result The created rotation matrix
  */
-CUDA_HOSTDEV static void createrotationMatrixAboutZAxis(float rotation_rad, float result[3][3]);
+CUDA_HOSTDEV static void createRotationMatrixAboutZAxis(float rotation_rad, float result[3][3]){
+  result[0][0] = cos(rotation_rad);
+  result[0][1] = -sin(rotation_rad);
+  result[0][2] = 0.0;
+  result[1][0] = sin(rotation_rad);
+  result[1][1] = cos(rotation_rad);
+  result[1][2] = 0.0;
+  result[2][0] = 0.0;
+  result[2][1] = 0.0;
+  result[2][2] = 1.0;
+}
+
+/**
+ * Rotate the given vector by the given amount 
+ *
+ * Rotation is *counterclockwise*, and about the z-axis
+ * 
+ * @param[in] v The vector to rotate
+ * @param[in] rotation_rad The amount to rotate the vector by, in radians
+ * @param[out] result This vector will be set to the result of rotating the
+ *                    given vector by the given amount in the 
+ *                    *counterclockwise* direcition
+ */
+CUDA_HOSTDEV static void rotateVector3AboutZAxis(float v[3], float rotation_rad, float result[3]){
+  float rotation_matrix[3][3];
+  createRotationMatrixAboutZAxis(rotation_rad, rotation_matrix);
+
+  multiplyVector3By3x3Matrix(rotation_matrix, v, result);
+}
 
 /**
  * Gets the unit vector in the direction of the given vector
  *
- * @param[in] v The vector get the unit vector for
- * @param[out] result A unit vector in the direction of v
+ * @param[in] dir The direction to get a unit vector in
+ * @param[out] result A unit vector in the direction of `dir`
  */
-CUDA_HOSTDEV static void getUnitVectorInDirection(float v[3], float result[3]);
+CUDA_HOSTDEV static void getUnitVectorInDirection(float dir[3], float result[3]){
+  float length = 0;
+  for (int i = 0; i < 3; i++){
+    length += pow(dir[i], 2.0);
+  }
+  length = sqrt(length);
+
+  for (int i = 0; i < 3; i++){
+    result[i] = dir[i] / length;
+  }
+}
 
 #endif // VECTOR_MATH_H
