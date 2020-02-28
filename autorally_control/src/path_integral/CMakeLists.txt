@@ -82,6 +82,10 @@ remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__
 #Executable for the basis function model
 ####################################################################################
 
+# TODO: just added this definition in an attempt to fix random CUDA errors.
+#       remove if not used
+add_definitions(-DUSE_BASIS_FUNC_MODEL__)
+
 cuda_add_executable(path_integral_omni_wheel_robot
                     path_integral_omni_wheel_robot_main.cu
                     omni_wheel_robot_plant
@@ -89,6 +93,8 @@ cuda_add_executable(path_integral_omni_wheel_robot
                     )
 add_dependencies(path_integral_omni_wheel_robot autorally_msgs_gencpp ${PROJECT_NAME}_gencfg)
 target_link_libraries(path_integral_omni_wheel_robot /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+remove_definitions(-DUSE_BASIS_FUNC_MODEL__)
 
 ###################################################################################
 #Executable for the neural network model

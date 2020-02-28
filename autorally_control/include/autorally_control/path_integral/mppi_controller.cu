@@ -348,6 +348,7 @@ MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::MPPIController(
   control_solution_.assign(numTimesteps_*CONTROL_DIM, 0);
   du_.resize(numTimesteps_*CONTROL_DIM);
   U_.resize(numTimesteps_*CONTROL_DIM);
+
   traj_costs_.resize(NUM_ROLLOUTS);
 
   //Allocate memory on the device.
@@ -600,21 +601,33 @@ template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
 void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeControl(
     Eigen::Matrix<float, STATE_DIM, 1> state)
 {
+  // TODO: delete this
+  printf("Starting MPPI controller\n");
+
   //First transfer the state and current control sequence to the device.
   costs_->paramsToDevice();
   model_->paramsToDevice();
 
   HANDLE_ERROR( cudaMemcpyAsync(state_d_, state.data(), STATE_DIM*sizeof(float), cudaMemcpyHostToDevice, stream_));
   for (int opt_iter = 0; opt_iter < num_iters_; opt_iter++) {
-    HANDLE_ERROR( cudaMemcpyAsync(U_d_, U_.data(), CONTROL_DIM*numTimesteps_*sizeof(float), cudaMemcpyHostToDevice, stream_));    
+    HANDLE_ERROR( cudaMemcpyAsync(U_d_, U_.data(), 
+          CONTROL_DIM*numTimesteps_*sizeof(float), cudaMemcpyHostToDevice, stream_));    
+
     //Generate a bunch of random numbers
     curandGenerateNormal(gen_, du_d_, NUM_ROLLOUTS*numTimesteps_*CONTROL_DIM, 0.0, 1.0);
+
+    // TODO: delete prints here
+
+    //printf("Launching Rollout Kernel\n");
     //Launch the rollout kernel
     launchRolloutKernel<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>(
             numTimesteps_, state_d_, U_d_, du_d_, nu_d_, traj_costs_d_, model_, 
             costs_, optimizationStride_, stream_
             );
+
+    printf("Transferring traj costs back to host\n");
     HANDLE_ERROR(cudaMemcpyAsync(traj_costs_.data(), traj_costs_d_, NUM_ROLLOUTS*sizeof(float), cudaMemcpyDeviceToHost, stream_));
+
     //NOTE: The calls to cudaMemcpyAsync are only asynchronous with regards to (1) CPU operations AND (2) GPU operations 
     //that are potentially occuring on other streams. Since all the previous kernel/memcpy operations use the same 
     //stream, they all occur sequentially with respect to our stream (which is necessary for correct execution)

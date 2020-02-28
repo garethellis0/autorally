@@ -1,5 +1,6 @@
 #ifndef VECTOR_MATH_H
 #define VECTOR_MATH_H
+
 /**
  * @brief A small vector math library, intended for use with CUDA code
  */

@@ -140,7 +140,7 @@ enum class ControllerType {
 class OmniWheelRobotPlant
 {
 public:
-  static const int STATE_DIM = 9;
+  static const int STATE_DIM = 6;
   static const int CONTROL_DIM = 4;
 
   using StateVector = Eigen::Matrix<float, STATE_DIM, 1>;
@@ -398,9 +398,6 @@ protected:
     float x_vel;
     float y_vel;
     float angular_vel;
-    float x_accel;
-    float y_accel;
-    float angular_accel;
 
     // Robot state in the local/body frame
     float x_vel_body_frame;

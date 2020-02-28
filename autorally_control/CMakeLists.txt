@@ -61,4 +61,3 @@ install(FILES nodelet_plugins.xml
 )
 
 catkin_add_gtest(vector-math-test test/vector_math_test.cpp)
-#target_link_libraries(omni-wheel-robot-model-test /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES})

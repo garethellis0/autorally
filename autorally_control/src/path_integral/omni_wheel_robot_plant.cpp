@@ -68,9 +68,6 @@ OmniWheelRobotPlant::OmniWheelRobotPlant(
 
   // Initialize state
   full_state_.angular_vel = 0.0;
-  full_state_.x_accel = 0.0;
-  full_state_.y_accel = 0.0;
-  full_state_.angular_accel = 0.0;
   
   //Initialize yaw derivative to zero
   status_ = 1;
@@ -429,8 +426,7 @@ OmniWheelRobotPlant::StateVector OmniWheelRobotPlant::getStateVector()
   StateVector state_vector;
   boost::mutex::scoped_lock lock(access_guard_);
   state_vector << full_state_.x_pos, full_state_.y_pos, full_state_.yaw, 
-                  full_state_.x_vel, full_state_.y_vel, full_state_.angular_vel,
-                  full_state_.x_accel, full_state_.y_accel, full_state_.angular_accel;
+                  full_state_.x_vel, full_state_.y_vel, full_state_.angular_vel;
   return state_vector;
 }
 
@@ -441,9 +437,6 @@ void OmniWheelRobotPlant::setStateFromVector(StateVector new_state){
   full_state_.x_vel = new_state(3);
   full_state_.y_vel = new_state(4);
   full_state_.angular_vel = new_state(5);
-  full_state_.x_accel = new_state(6);
-  full_state_.y_accel = new_state(7);
-  full_state_.angular_accel = new_state(8);
 }
 
 ros::Time OmniWheelRobotPlant::getLastPoseTime()

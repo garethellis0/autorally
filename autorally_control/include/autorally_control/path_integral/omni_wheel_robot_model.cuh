@@ -46,9 +46,9 @@ class OmniWheelRobotModel: public Managed
 public:
 
   // The size of the entire state
-  static const int STATE_DIM = 9;
+  static const int STATE_DIM = 6;
   // The number of kinematic variables in the state
-  static const int KINEMATICS_DIM = 6;
+  static const int KINEMATICS_DIM = 3;
   // The number of variables in the control input
   static const int CONTROL_DIM = 4;
   // The dynamics dimension
@@ -213,7 +213,7 @@ private:
    * @return The coefficient of friction for the given speed in the direction 
    *         the wheel is oriented
    */
-  float computeWheelFrictionCoeffInWheelDir(float wheel_sliding_speed);
+  __host__ __device__ float computeWheelFrictionCoeffInWheelDir(float wheel_sliding_speed);
 
   /**
    * Computes the wheel coefficient of friction for a given speed, tranverse to 
@@ -223,7 +223,7 @@ private:
    * @return The coefficient of friction for the given speed in the direction 
    *         transverse to the direction the wheel is oriented
    */
-  float computeWheelFrictionCoeffInTransverseDir(float wheel_transverse_speed);
+  __host__ __device__ float computeWheelFrictionCoeffInTransverseDir(float wheel_transverse_speed);
 
   // The angle of the front two wheels, measured relative to a vector
   // pointing directly forward (+x) on the robot

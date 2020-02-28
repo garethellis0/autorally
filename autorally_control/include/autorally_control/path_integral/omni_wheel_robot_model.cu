@@ -28,20 +28,20 @@ void OmniWheelRobotModel::freeCudaMem(){}
 void OmniWheelRobotModel::enforceConstraints(Eigen::MatrixXf &state, Eigen::MatrixXf &control){}
 
 void OmniWheelRobotModel::updateState(Eigen::MatrixXf &state, Eigen::MatrixXf &control){
-  state_der_ *= 0;
 
   enforceConstraints(state, control);
   computeKinematics(state);
   computeDynamics(state, control);
 
   state += state_der_*dt_;
+  state_der_ *= 0;
 }
 
 void OmniWheelRobotModel::computeKinematics(Eigen::MatrixXf &state) {
   // Here we compute the derivative by rotating the higher order
   // state variables (velocity and acceleration) into the robot frame
-  static_assert(KINEMATICS_DIM == 6, "");
-  static_assert(STATE_DIM == 9, "");
+  static_assert(KINEMATICS_DIM == 3, "");
+  static_assert(STATE_DIM == 6, "");
 
   // The change in the 0th derivative terms (x, y, yaw) is from the 1st 
   // derivative terms (v_x, v_y, v_angular)
@@ -49,11 +49,12 @@ void OmniWheelRobotModel::computeKinematics(Eigen::MatrixXf &state) {
   state_der_(1) = sinf(state(2))*state(3) + cosf(state(2))*state(4);
   state_der_(2) = state(5); 
 
-  // The change in the 1st derivative terms (x, y, yaw) is from the 2nd 
-  // derivative terms (a_x, a_y, a_angular)
-  state_der_(3) = cosf(state(2))*state(6) - sinf(state(2))*state(7);
-  state_der_(4) = sinf(state(2))*state(6) + cosf(state(2))*state(7);
-  state_der_(5) = state(8); 
+  // TODO: delete if unused
+  //// The change in the 1st derivative terms (x, y, yaw) is from the 2nd 
+  //// derivative terms (a_x, a_y, a_angular)
+  //state_der_(3) = cosf(state(2))*state(6) - sinf(state(2))*state(7);
+  //state_der_(4) = sinf(state(2))*state(6) + cosf(state(2))*state(7);
+  //state_der_(5) = state(8); 
 }
 
 void OmniWheelRobotModel::computeDynamics(Eigen::MatrixXf &state, Eigen::MatrixXf &control){
@@ -62,24 +63,24 @@ void OmniWheelRobotModel::computeDynamics(Eigen::MatrixXf &state, Eigen::MatrixX
   // Eigen functions to do the same thing), but seriously reduces the 
   // potential for bugs from re-implementing an algorithm twice, with no
   // tests on either implementation.....
-  static_assert(KINEMATICS_DIM == 6, "");
-  static_assert(DYNAMICS_DIM == 3, "");
+  static_assert(KINEMATICS_DIM == 3, "");
+  static_assert(STATE_DIM == 6, "");
 
-  float state_array[STATE_DIM];
-  for (int i = 0; i < STATE_DIM; i++){
+  float state_array[KINEMATICS_DIM];
+  for (int i = 0; i < KINEMATICS_DIM; i++){
     state_array[i] = state(i);
   }
   float control_array[CONTROL_DIM];
-  for (int i = 0; i < STATE_DIM; i++){
+  for (int i = 0; i < CONTROL_DIM; i++){
     control_array[i] = control(i);
   }
 
-  float state_der_array[9];
+  float state_der_array[6];
   computeDynamics(state_array, control_array, state_der_array, NULL);
 
-  state_der_(7) = state_der_array[7];
-  state_der_(8) = state_der_array[8];
-  state_der_(9) = state_der_array[9];
+  state_der_(3) = state_der_array[3];
+  state_der_(4) = state_der_array[4];
+  state_der_(5) = state_der_array[5];
 }
 
 __device__ void OmniWheelRobotModel::cudaInit(float* theta_s){}
@@ -91,8 +92,8 @@ __device__ void OmniWheelRobotModel::enforceConstraints(float* state, float* con
 __device__ void OmniWheelRobotModel::computeKinematics(float* state, float* state_der){
   // Here we compute the derivative by rotating the higher order
   // state variables (velocity and acceleration) into the robot frame
-  static_assert(KINEMATICS_DIM == 6, "");
-  static_assert(STATE_DIM == 9, "");
+  static_assert(KINEMATICS_DIM == 3, "");
+  static_assert(STATE_DIM == 6, "");
 
   // The change in the 0th derivative terms (x, y, yaw) is from the 1st 
   // derivative terms (v_x, v_y, v_angular)
@@ -100,15 +101,17 @@ __device__ void OmniWheelRobotModel::computeKinematics(float* state, float* stat
   state_der_[1] = sinf(state[2])*state[3] + cosf(state[2])*state[4];
   state_der_[2] = state[5]; 
 
-  // The change in the 1st derivative terms (x, y, yaw) is from the 2nd 
-  // derivative terms (a_x, a_y, a_angular)
-  state_der_[3] = cosf(state[2])*state[6] - sinf(state[2])*state[7];
-  state_der_[4] = sinf(state[2])*state[6] + cosf(state[2])*state[7];
-  state_der_[5] = state[8]; 
+  // TODO: delete if unused
+  //// The change in the 1st derivative terms (x, y, yaw) is from the 2nd 
+  //// derivative terms (a_x, a_y, a_angular)
+  //state_der_[3] = cosf(state[2])*state[6] - sinf(state[2])*state[7];
+  //state_der_[4] = sinf(state[2])*state[6] + cosf(state[2])*state[7];
+  //state_der_[5] = state[8]; 
 }
 
 __host__ __device__ void OmniWheelRobotModel::computeDynamics(
     float* state, float* control, float* state_der, float* theta_s){ 
+
   // TODO: if performance is an issue, there are several things here that
   //       we can cache and not recompute, like the wheel vectors
 
@@ -120,7 +123,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
   // This function assumes that the dynamics output is of the form
   // [a_x, a_y, a_angular], and that these are the elements 7,8,9 of
   // the state vector
-  static_assert(KINEMATICS_DIM == 6, "");
+  static_assert(KINEMATICS_DIM == 3, "");
   static_assert(DYNAMICS_DIM == 3, "");
 
   // NOTE: unless otherwise specified, all arrays of wheel specific values 
@@ -234,9 +237,9 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
   const float a_y = force_y / ROBOT_MASS_KG;
   const float a_angular = -force_angular / ROBOT_MOMENT_OF_INERTIA;
 
-  state_der[7] = a_x;
-  state_der[8] = a_y;
-  state_der[9] = a_angular;
+  state_der[3] = a_x;
+  state_der[4] = a_y;
+  state_der[5] = a_angular;
 }
 
 __device__ void OmniWheelRobotModel::computeStateDeriv(
@@ -271,12 +274,12 @@ __device__ void OmniWheelRobotModel::incrementState(float* state, float* state_d
   }
 }
 
-float OmniWheelRobotModel::computeWheelFrictionCoeffInWheelDir(float wheel_sliding_speed){
+__host__ __device__ float OmniWheelRobotModel::computeWheelFrictionCoeffInWheelDir(float wheel_sliding_speed){
   return WHEEL_FRICTION_COEFF_IN_WHEEL_DIR * 2.0 / M_PI * atan(
       FRICTION_COEFF_TRANSITION_COEFF * wheel_sliding_speed);
 }
 
-float OmniWheelRobotModel::computeWheelFrictionCoeffInTransverseDir(float wheel_transverse_speed){
+__host__ __device__ float OmniWheelRobotModel::computeWheelFrictionCoeffInTransverseDir(float wheel_transverse_speed){
         return WHEEL_FRICTION_COEFF_IN_TRANSVERSE_DIR * 2.0 / M_PI * atan(
             FRICTION_COEFF_TRANSITION_COEFF * wheel_transverse_speed);
 }
