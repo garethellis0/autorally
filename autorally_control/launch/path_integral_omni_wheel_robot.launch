@@ -23,7 +23,7 @@
     <param name="x_pos" value="0.0" />
     <param name="y_pos" value="0.0" />
     <param name="heading" value="2.35" />
-    <param name="wheel_speed_exploration_variance" value="1000.0" />
+    <param name="wheel_speed_exploration_variance" value="100.0" />
 
     <!-- How many controls are executed between optimization loops -->
     <param name="optimization_stride" value="1" />
@@ -31,13 +31,13 @@
 
     <!-- Control hyper-parameters-->
     <param name="norm_exp_kernel_gamma" value=".15" />
-    <param name="num_optimization_iters" value="1" />
+    <param name="num_optimization_iters" value="10" />
 
     <!-- Control parameters -->
 
     <!-- Control Constraints -->
     <param name="max_abs_wheel_speed" value="2" />
-    <param name="controls_frequency" value="50" />
+    <param name="controls_frequency" value="100" />
 
     <!-- Cost Parameters -->
     <param name="l1_cost" value="false" />

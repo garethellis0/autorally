@@ -75,9 +75,18 @@ void OmniWheelRobotModel::computeDynamics(Eigen::MatrixXf &state, Eigen::MatrixX
     control_array[i] = control(i);
   }
 
-  float state_der_array[6];
+  // TODO: delete printouts
+
+  printf("state_array: %f %f %f %f %f %f\n", state_array[0], state_array[1], 
+      state_array[2], state_array[3], state_array[4], state_array[5]);
+  printf("control_array: %f %f %f %f \n", control_array[0], control_array[1], 
+      control_array[2], control_array[3]);
+  float state_der_array[6] = {0, 0, 0, 0, 0, 0};
+
   computeDynamics(state_array, control_array, state_der_array, NULL);
 
+  printf("state_der_array after: %f %f %f %f %f %f \n", state_der_array[0], state_der_array[1], state_der_array[2],
+      state_der_array[3] , state_der_array[4], state_der_array[5]);
   state_der_(3) = state_der_array[3];
   state_der_(4) = state_der_array[4];
   state_der_(5) = state_der_array[5];
@@ -120,9 +129,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
 
   // This function assumes there are 4 control inputs, one for each wheel
   static_assert(CONTROL_DIM == 4, "");
-  // This function assumes that the dynamics output is of the form
-  // [a_x, a_y, a_angular], and that these are the elements 7,8,9 of
-  // the state vector
+
   static_assert(KINEMATICS_DIM == 3, "");
   static_assert(DYNAMICS_DIM == 3, "");
 
@@ -163,7 +170,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
   createRotationMatrixAboutZAxis(curr_orientation, R_0_to_M);
   // Rotation matrix from robot-relative coordinates to global coordinates
   float R_M_to_0[3][3];
-  createRotationMatrixAboutZAxis(-curr_orientation, R_0_to_M);
+  createRotationMatrixAboutZAxis(-curr_orientation, R_M_to_0);
 
   // Velocity vector of the robot in the global frame
   float v_G[3] = {state[3], state[4], 0};
@@ -189,7 +196,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
     multiplyVector3By3x3Matrix(R_M_to_0, unit_wheel_position_vectors[i], 
         transformed_wheel_position_vec);
     multiplyVector3By3x3Matrix(R_M_to_0, unit_wheel_orientation_vectors[i], 
-        transformed_wheel_position_vec);
+        transformed_wheel_orientation_vec);
 
     // TODO: Better name for this. I mean *REALLY*.
     float cross_result[3];
@@ -215,6 +222,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
     addVector3(scaled_transformed_wheel_orientation_vec, 
         scaled_transformed_wheel_position_vec, summed_acceleration);
 
+
     multiplyVector3ByScalar(summed_acceleration, -ROBOT_MASS_KG*9.8/4.0, wheel_forces[i]);
 
     // TODO: better name for this
@@ -224,6 +232,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
     const float positive_z_vec[3] = {0, 0, 1};
     force_angular += dotProductVector3(positive_z_vec, cross_result1);
   }
+
 
   float total_force[3] = {0, 0, 0};
   for (int i = 0; i < 4; i++){
@@ -237,9 +246,15 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
   const float a_y = force_y / ROBOT_MASS_KG;
   const float a_angular = -force_angular / ROBOT_MOMENT_OF_INERTIA;
 
+  // TODO: delete these
+  state_der[0] = cosf(state[2]);
+  state_der[1] = a_x;
+  state_der[2] = sinf(state[2]);
+
+  // TODO: Definitely don't scale angular acceleration like this here
   state_der[3] = a_x;
   state_der[4] = a_y;
-  state_der[5] = a_angular;
+  state_der[5] = a_angular/10;
 }
 
 __device__ void OmniWheelRobotModel::computeStateDeriv(
@@ -280,8 +295,8 @@ __host__ __device__ float OmniWheelRobotModel::computeWheelFrictionCoeffInWheelD
 }
 
 __host__ __device__ float OmniWheelRobotModel::computeWheelFrictionCoeffInTransverseDir(float wheel_transverse_speed){
-        return WHEEL_FRICTION_COEFF_IN_TRANSVERSE_DIR * 2.0 / M_PI * atan(
-            FRICTION_COEFF_TRANSITION_COEFF * wheel_transverse_speed);
+  return WHEEL_FRICTION_COEFF_IN_TRANSVERSE_DIR * 2.0 / M_PI * atan(
+      FRICTION_COEFF_TRANSITION_COEFF * wheel_transverse_speed);
 }
 
 }

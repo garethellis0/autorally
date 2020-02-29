@@ -89,7 +89,7 @@ void omniWheelRobotRunControlLoop(
   // TODO: we really should just have the entire state as a list param in the
   //       launch file and pass it directly through to the plant, as that is
   //       more general
-  state << params->x_pos, params->y_pos, params->heading, 0, 0, 0, 0;
+  state << params->x_pos, params->y_pos, params->heading, 0, 0, 0;
   robot->setStateFromVector(state);
   
   //Initial control value
@@ -145,14 +145,14 @@ void omniWheelRobotRunControlLoop(
       // TODO: need two debug windows, (actual and predicted states)
 
      // display costs around actual robot state
-     cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
-     robot->setDebugImage(debug_img);
+     //cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
+     //robot->setDebugImage(debug_img);
 
      // display costs around predicted robot state
-     //std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
-     //cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
-     //    controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
-     //robot->setDebugImage(debug_img);
+     std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
+     cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
+         controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
+     robot->setDebugImage(debug_img);
     }
 
     //Update the state estimate
