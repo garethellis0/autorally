@@ -43,11 +43,17 @@ void OmniWheelRobotModel::computeKinematics(Eigen::MatrixXf &state) {
   static_assert(KINEMATICS_DIM == 3, "");
   static_assert(STATE_DIM == 6, "");
 
-  // The change in the 0th derivative terms (x, y, yaw) is from the 1st 
-  // derivative terms (v_x, v_y, v_angular)
-  state_der_(0) = cosf(state(2))*state(3) - sinf(state(2))*state(4);
-  state_der_(1) = sinf(state(2))*state(3) + cosf(state(2))*state(4);
-  state_der_(2) = state(5); 
+  float state_array[STATE_DIM];
+  for (int i = 0; i < STATE_DIM; i++){
+    state_array[i] = state(i);
+  }
+  float state_der_array[STATE_DIM];
+
+  computeKinematics(state_array, state_der_array);
+
+  for (int i = 0; i < KINEMATICS_DIM; i++){
+    state_der_(i) = state_der_array[i];
+  }
 
   // TODO: delete if unused
   //// The change in the 1st derivative terms (x, y, yaw) is from the 2nd 
@@ -98,7 +104,7 @@ __device__ void OmniWheelRobotModel::enforceConstraints(float* state, float* con
   // TODO?
 }
 
-__device__ void OmniWheelRobotModel::computeKinematics(float* state, float* state_der){
+__host__ __device__ void OmniWheelRobotModel::computeKinematics(float* state, float* state_der){
   // Here we compute the derivative by rotating the higher order
   // state variables (velocity and acceleration) into the robot frame
   static_assert(KINEMATICS_DIM == 3, "");
@@ -106,9 +112,9 @@ __device__ void OmniWheelRobotModel::computeKinematics(float* state, float* stat
 
   // The change in the 0th derivative terms (x, y, yaw) is from the 1st 
   // derivative terms (v_x, v_y, v_angular)
-  state_der_[0] = cosf(state[2])*state[3] - sinf(state[2])*state[4];
-  state_der_[1] = sinf(state[2])*state[3] + cosf(state[2])*state[4];
-  state_der_[2] = state[5]; 
+  state_der[0] = cosf(state[2])*state[3] - sinf(state[2])*state[4];
+  state_der[1] = sinf(state[2])*state[3] + cosf(state[2])*state[4];
+  state_der[2] = state[5]; 
 
   // TODO: delete if unused
   //// The change in the 1st derivative terms (x, y, yaw) is from the 2nd 
@@ -139,11 +145,11 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
   // Setup wheel position vectors, vectors from the center of the robot
   // to the center of each wheel
   float wheel_position_vectors[4][3];
-  const float positive_x_vec[3] = {ROBOT_RADIUS_M, 0, 0};
-  rotateVector3AboutZAxis(positive_x_vec, FRONT_WHEEL_ANGLE_RAD, wheel_position_vectors[0]);
-  rotateVector3AboutZAxis(positive_x_vec, M_PI - REAR_WHEEL_ANGLE_RAD, wheel_position_vectors[1]);
-  rotateVector3AboutZAxis(positive_x_vec, M_PI + REAR_WHEEL_ANGLE_RAD, wheel_position_vectors[2]);
-  rotateVector3AboutZAxis(positive_x_vec, -FRONT_WHEEL_ANGLE_RAD, wheel_position_vectors[3]);
+  const float positive_x_vec_robot_radius[3] = {ROBOT_RADIUS_M, 0, 0};
+  rotateVector3AboutZAxis(positive_x_vec_robot_radius, FRONT_WHEEL_ANGLE_RAD, wheel_position_vectors[0]);
+  rotateVector3AboutZAxis(positive_x_vec_robot_radius, M_PI - REAR_WHEEL_ANGLE_RAD, wheel_position_vectors[1]);
+  rotateVector3AboutZAxis(positive_x_vec_robot_radius, M_PI + REAR_WHEEL_ANGLE_RAD, wheel_position_vectors[2]);
+  rotateVector3AboutZAxis(positive_x_vec_robot_radius, -FRONT_WHEEL_ANGLE_RAD, wheel_position_vectors[3]);
   float unit_wheel_position_vectors[4][3];
   for (int i = 0; i < 4; i++){
     getUnitVectorInDirection(wheel_position_vectors[i], 
@@ -239,6 +245,7 @@ __host__ __device__ void OmniWheelRobotModel::computeDynamics(
     addVector3(total_force, wheel_forces[i], total_force);
   }
 
+  float positive_x_vec[3] = {1, 0, 0};
   float force_x = dotProductVector3(positive_x_vec, total_force);
   float force_y = dotProductVector3(positive_y_vec, total_force);
 

@@ -139,7 +139,7 @@ public:
    *
    * @param state The current robot state
    */
-  __device__ void computeKinematics(float* state, float* state_der);
+  __host__ __device__ void computeKinematics(float* state, float* state_der);
 
   /**
    * Update the state_der_ components that require the robot state and controls

@@ -145,14 +145,14 @@ void omniWheelRobotRunControlLoop(
       // TODO: need two debug windows, (actual and predicted states)
 
      // display costs around actual robot state
-     //cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
-     //robot->setDebugImage(debug_img);
+     cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
+     robot->setDebugImage(debug_img);
 
      // display costs around predicted robot state
-     std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
-     cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
-         controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
-     robot->setDebugImage(debug_img);
+     //std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
+     //cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
+     //    controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
+     //robot->setDebugImage(debug_img);
     }
 
     //Update the state estimate
@@ -275,7 +275,9 @@ void omniWheelRobotRunControlLoop(
     //Increment the state if debug mode is set to true
     if (status != 0 && params->debug_mode){
       for (int t = 0; t < optimization_stride; t++){
-        u << controlSolution[2*t], controlSolution[2*t + 1];
+        // TODO: this should be dynamic in thr controls size
+        u << controlSolution[PLANT_T::CONTROL_DIM*t], controlSolution[PLANT_T::CONTROL_DIM*t + 1],
+          controlSolution[PLANT_T::CONTROL_DIM*t + 2], controlSolution[PLANT_T::CONTROL_DIM*t + 3];
         actual_state_controller->model_->updateState(state, u); 
         predicted_state_controller->model_->updateState(state, u); 
       }
