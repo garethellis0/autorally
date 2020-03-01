@@ -416,8 +416,10 @@ void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::initDDP()
   R_.setIdentity();
   R_.diagonal() << 10.0, 10.0;
 
-  U_MIN_ << model_->control_rngs_[0].x, model_->control_rngs_[1].x;
-  U_MAX_ << model_->control_rngs_[0].y, model_->control_rngs_[1].y;
+  for (int i = 0; i < CONTROL_DIM; i++){
+    U_MIN_(i) = model_->control_rngs_[i].x;
+    U_MAX_(i) = model_->control_rngs_[i].y;
+  }
   
   //Define the running and terminal cost
   run_cost_ = new TrackingCostDDP<ModelWrapperDDP<DYNAMICS_T>>(Q_, R_, numTimesteps_);
@@ -501,20 +503,21 @@ void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::savitskyGola
 template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
 void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeNominalTraj(Eigen::Matrix<float, STATE_DIM, 1> state)
 {
-  int i,j;
-  Eigen::MatrixXf s(7,1);
-  Eigen::MatrixXf u(2,1);
+  Eigen::MatrixXf s(STATE_DIM,1);
+  Eigen::MatrixXf u(CONTROL_DIM,1);
   s = state;
-  for (i = 0; i < numTimesteps_; i++){
-    for (j = 0; j < STATE_DIM; j++){
-      //Set the current state solution
+  for (int i = 0; i < numTimesteps_; i++){
+    for (int j = 0; j < STATE_DIM; j++){
       state_solution_[i*STATE_DIM + j] = s(j);
     }
-    u << U_[2*i], U_[2*i + 1];
+    for (int j = 0; j < CONTROL_DIM; j++){
+      u(j) = U_[i*CONTROL_DIM + j];
+    }
     model_->updateState(s,u);
     //Set current control solution after clamping
-    control_solution_[2*i] = u(0);
-    control_solution_[2*i + 1] = u(1);
+    for (int j = 0; j < CONTROL_DIM; j++){
+      control_solution_[i*CONTROL_DIM + j] = u(j);
+    }
   }
 }
 
@@ -528,14 +531,16 @@ template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
 void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::slideControlSeq(int stride){
   //Slide the control sequence down by stride
   if (stride == 1){
-    control_hist_[0] = control_hist_[2];
-    control_hist_[1] = control_hist_[3];
-    control_hist_[2] = U_[0];
-    control_hist_[3] = U_[1];
+    for (int i = 0; i < CONTROL_DIM; i++){
+      control_hist_[i] = control_hist_[i + CONTROL_DIM]; 
+    }
+    for (int i = 0; i < CONTROL_DIM; i++){
+      control_hist_[CONTROL_DIM + i] = U_[i]; 
+    }
   }
   else{
     int t = stride - 2;
-    for (int i = 0; i < 4; i++){
+    for (int i = 0; i < 2*CONTROL_DIM; i++){
       control_hist_[i] = U_[t + i];
     }
   }
