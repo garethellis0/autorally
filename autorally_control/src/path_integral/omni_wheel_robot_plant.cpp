@@ -310,7 +310,7 @@ void OmniWheelRobotPlant::pubPath(const ros::TimerEvent&)
 
     tf2::Quaternion quat;
     float yaw = stateSequence_[i*(STATE_DIM) + 2];
-    quat.setRPY(yaw, 0, 0);
+    quat.setRPY(0, 0, yaw);
     pose.pose.orientation = tf2::toMsg(quat);
 
     pose.header.stamp = begin + ros::Duration(i*deltaT_);

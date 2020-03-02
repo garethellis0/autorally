@@ -11,21 +11,31 @@ OmniWheelRobotModel::OmniWheelRobotModel(double dt, double max_abs_wheel_speed) 
   max_abs_wheel_speed_(max_abs_wheel_speed),
   ROBOT_MOMENT_OF_INERTIA(0.5 * ROBOT_MASS_KG * pow(ROBOT_RADIUS_M, 2.0))
   {
-    // TODO: this was copied from `generlized_linear`. Looks like like only the
-    //       first two elements are used by the `mppi_controller` though. 
-    //       This is probably wrong.
     control_rngs_ = new float2[CONTROL_DIM];
     for (int i = 0; i < CONTROL_DIM; i++){
-      control_rngs_[i].x = -FLT_MAX;
-      control_rngs_[i].y = FLT_MAX;
+      control_rngs_[i].x = -max_abs_wheel_speed;
+      control_rngs_[i].y = max_abs_wheel_speed;
     }
+
+    HANDLE_ERROR( cudaMalloc((void**)&control_rngs_d_, CONTROL_DIM*sizeof(float2)) );
   }
 
-void OmniWheelRobotModel::paramsToDevice(){}
+void OmniWheelRobotModel::paramsToDevice(){
+  HANDLE_ERROR( cudaMemcpy(control_rngs_d_, control_rngs_, CONTROL_DIM*sizeof(float2), cudaMemcpyHostToDevice) );
+}
 
 void OmniWheelRobotModel::freeCudaMem(){}
 
-void OmniWheelRobotModel::enforceConstraints(Eigen::MatrixXf &state, Eigen::MatrixXf &control){}
+void OmniWheelRobotModel::enforceConstraints(Eigen::MatrixXf &state, Eigen::MatrixXf &control){
+  for (int i = 0; i < CONTROL_DIM; i++){
+    if (control(i) < control_rngs_[i].x){
+      control(i) = control_rngs_[i].x;
+    }
+    else if (control(i) > control_rngs_[i].y){
+      control(i) = control_rngs_[i].y;
+    }
+  }
+}
 
 void OmniWheelRobotModel::updateState(Eigen::MatrixXf &state, Eigen::MatrixXf &control){
 
@@ -72,8 +82,8 @@ void OmniWheelRobotModel::computeDynamics(Eigen::MatrixXf &state, Eigen::MatrixX
   static_assert(KINEMATICS_DIM == 3, "");
   static_assert(STATE_DIM == 6, "");
 
-  float state_array[KINEMATICS_DIM];
-  for (int i = 0; i < KINEMATICS_DIM; i++){
+  float state_array[STATE_DIM];
+  for (int i = 0; i < STATE_DIM; i++){
     state_array[i] = state(i);
   }
   float control_array[CONTROL_DIM];
@@ -101,7 +111,14 @@ void OmniWheelRobotModel::computeDynamics(Eigen::MatrixXf &state, Eigen::MatrixX
 __device__ void OmniWheelRobotModel::cudaInit(float* theta_s){}
 
 __device__ void OmniWheelRobotModel::enforceConstraints(float* state, float* control){
-  // TODO?
+  for (int i = 0; i < CONTROL_DIM; i++){
+    if (control[i] < control_rngs_d_[i].x){
+      control[i] = control_rngs_d_[i].x;
+    }
+    else if (control[i] > control_rngs_d_[i].y){
+      control[i] = control_rngs_d_[i].y;
+    }
+  }
 }
 
 __host__ __device__ void OmniWheelRobotModel::computeKinematics(float* state, float* state_der){

@@ -255,13 +255,23 @@ void omniWheelRobotRunControlLoop(
 
     // TODO: remove this printout
     std::cout << "Control Solution: ";
-    for (auto elem : controlSolution) {
-      std::cout << elem << ", ";
+    for (int i = 0; i < controlSolution.size(); i++){
+      std::cout << controlSolution[i];
+      if ((i+1) % PLANT_T::CONTROL_DIM == 0){
+        std::cout << " | ";
+      } else {
+        std::cout << ", ";
+      }
     }
-    std::cout << std::endl;
+    std::cout << std::endl << "----------" << std::endl << std::endl;
     std::cout << "State Solution: ";
-    for (auto elem : stateSolution) {
-      std::cout << elem << ", ";
+    for (int i = 0; i < stateSolution.size(); i++){
+      std::cout << stateSolution[i];
+      if ((i+1) % PLANT_T::STATE_DIM == 0){
+        std::cout << " | ";
+      } else {
+        std::cout << ", ";
+      }
     }
     std::cout << std::endl;
 
