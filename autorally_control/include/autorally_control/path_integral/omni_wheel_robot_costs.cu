@@ -373,6 +373,7 @@ inline __device__ float OmniWheelRobotMPPICosts::getTrackCost(float* s, int* cra
 inline __device__ float OmniWheelRobotMPPICosts::computeCost(float* s, float* u, float* du, 
                                         float* vars, int* crash, int timestep)
 {
+
   float control_cost = getControlCost(u, du, vars);
   float track_cost = getTrackCost(s, crash);
   float speed_cost = getSpeedCost(s, crash);

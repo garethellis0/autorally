@@ -42,7 +42,7 @@
 #include <autorally_control/PathIntegralParamsConfig.h>
 #include <autorally_control/path_integral/omni_wheel_robot_costs.cuh>
 
-#include <autorally_control/path_integral/omni_wheel_robot_model.cuh>
+#include <autorally_control/path_integral/omni_wheel_robot_autorally_model.cuh>
 #include <autorally_control/path_integral/mppi_controller.cuh>
 #include <autorally_control/path_integral/omni_wheel_robot_run_control_loop.cuh>
 
@@ -55,7 +55,7 @@
 
 using namespace autorally_control;
 
-typedef OmniWheelRobotModel DynamicsModel;
+typedef OmniWheelRobotAutorallyModel DynamicsModel;
 typedef OmniWheelRobotMPPICosts Costs;
 typedef OmniWheelRobotPathIntegralParamsConfig Config;
 typedef OmniWheelRobotPlant Plant;
