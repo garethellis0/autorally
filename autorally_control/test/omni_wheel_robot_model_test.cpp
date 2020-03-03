@@ -200,7 +200,7 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_no_
 
   EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_NEAR(0, state_der[4], 1e-4);
-  EXPECT_GE(state_der[5], 0.1);
+  EXPECT_GE(state_der[5], 0.05);
 }
 
 TEST_F(OmniWheelRobotModelTest, 
@@ -213,7 +213,7 @@ TEST_F(OmniWheelRobotModelTest,
 
   EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_NEAR(0, state_der[4], 1e-4);
-  EXPECT_LE(state_der[5], -0.1);
+  EXPECT_LE(state_der[5], -0.05);
 }
 
 //  ------- At Origin, Rotated CW ----------
@@ -275,7 +275,7 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_rot
 
   EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_NEAR(0, state_der[4], 1e-4);
-  EXPECT_GE(state_der[5], 0.1);
+  EXPECT_GE(state_der[5], 0.05);
 }
 
 TEST_F(OmniWheelRobotModelTest, 
@@ -288,7 +288,7 @@ TEST_F(OmniWheelRobotModelTest,
 
   EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_NEAR(0, state_der[4], 1e-4);
-  EXPECT_LE(state_der[5], -0.1);
+  EXPECT_LE(state_der[5], -0.05);
 }
 
 //  ------- In +x/+y Quadrant, No Rotation ----------
@@ -364,7 +364,7 @@ TEST_F(OmniWheelRobotModelTest,
 
   EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_NEAR(0, state_der[4], 1e-4);
-  EXPECT_LE(state_der[5], -0.1);
+  EXPECT_LE(state_der[5], -0.05);
 }
 
 //  ------- At +x/+y Quadrant, Rotated CW ----------
@@ -444,7 +444,7 @@ TEST_F(OmniWheelRobotModelTest,
 
   EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_NEAR(0, state_der[4], 1e-4);
-  EXPECT_LE(state_der[5], -0.1);
+  EXPECT_LE(state_der[5], -0.05);
 }
 
 //  ------- At Origin, No Rotation, Moving Forwards ----------
@@ -518,7 +518,7 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_wit
 
     EXPECT_NEAR(0, state_der[3], 1e-4);
     EXPECT_NEAR(0, state_der[4], 1e-4);
-    EXPECT_GE(state_der[5], 0.1);
+    EXPECT_GE(state_der[5], 0.05);
 }
 
 TEST_F(OmniWheelRobotModelTest,
@@ -531,7 +531,7 @@ TEST_F(OmniWheelRobotModelTest,
 
     EXPECT_NEAR(0, state_der[3], 1e-4);
     EXPECT_NEAR(0, state_der[4], 1e-4);
-    EXPECT_LE(state_der[5], -0.1);
+    EXPECT_LE(state_der[5], -0.05);
 }
 
 int main(int argc, char** argv) {
