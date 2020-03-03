@@ -35,7 +35,7 @@ catkin_package(
 
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${Eigen3_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${Eigen3_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 
 add_subdirectory(src/ConstantSpeedController)
 add_subdirectory(src/joystick)
@@ -61,3 +61,5 @@ install(FILES nodelet_plugins.xml
 )
 
 catkin_add_gtest(vector-math-test test/vector_math_test.cpp)
+catkin_add_gtest(omni-wheel-robot-model-test test/omni_wheel_robot_model_test.cpp)
+target_link_libraries(omni-wheel-robot-model-test ${catkin_LIBRARIES})
