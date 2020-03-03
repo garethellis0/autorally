@@ -291,9 +291,13 @@ inline void OmniWheelRobotMPPICosts::updateCostmap(std::vector<int> description,
 inline void OmniWheelRobotMPPICosts::updateObstacles(std::vector<int> description, std::vector<float> data){}
 
 inline __host__ __device__ void OmniWheelRobotMPPICosts::getCrash(float* state, int* crash) {
-  if (fabs(state[3]) > 1.57) {
-    crash[0] = 1;
-  }
+  // Carryover from when this was controlling an RC car, we don't consider
+  // this a crash
+  // Not really sure how this worked, but assuming commenting out the whole
+  // function effectively disables it (in this case)
+  //if (fabs(state[3]) > 1.57) {
+  //  crash[0] = 1;
+  //}
 }
 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getControlCost(float* u, float* du, float* vars)
@@ -318,11 +322,14 @@ inline __host__ __device__ float OmniWheelRobotMPPICosts::getSpeedCost(float* s,
 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getCrashCost(float* s, int* crash, int timestep)
 {
-  float crash_cost = 0;
-  if (crash[0] > 0) {
-      crash_cost = params_d_->crash_coeff;
-  }
-  return crash_cost;
+  // Carryover from when this was controlling an RC car, we don't consider
+  // this a crash
+  return 0;
+  //float crash_cost = 0;
+  //if (crash[0] > 0) {
+  //    crash_cost = params_d_->crash_coeff;
+  //}
+  //return crash_cost;
 }
 
 inline __host__ __device__ void OmniWheelRobotMPPICosts::coorTransform(float x, float y, float* u, float* v, float* w)
@@ -373,6 +380,10 @@ inline __device__ float OmniWheelRobotMPPICosts::getTrackCost(float* s, int* cra
 inline __device__ float OmniWheelRobotMPPICosts::computeCost(float* s, float* u, float* du, 
                                         float* vars, int* crash, int timestep)
 {
+  // TODO: delete
+  float dx = s[0] + 4;
+  float dy = s[1] + 6;
+  return sqrt(10*pow(dx, 2.0) + 10*pow(dy, 2.0));
 
   float control_cost = getControlCost(u, du, vars);
   float track_cost = getTrackCost(s, crash);

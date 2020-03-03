@@ -15,7 +15,7 @@ protected:
   void TearDown(){
   }
 
-  static void checkRawArrayEq(int n, float* expected, float* actual, float tol = 1e-5){
+  static void checkRawArrayEq(int n, float* expected, float* actual, float tol = 1e-4){
     for (int i = 0; i < n; i++){
       EXPECT_NEAR(expected[i], actual[i], tol);
     }
@@ -151,8 +151,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_forward_at_origin_no_rota
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_GE(state_der[3], 0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_at_origin_no_rotation){
@@ -163,8 +163,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_at_origin_no_ro
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_LE(state_der[3], -0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_at_origin_no_rotation){
@@ -174,9 +174,9 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_at_origin_no_rotati
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_LE(state_der[4], -0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_at_origin_no_rotation){
@@ -186,9 +186,9 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_at_origin_no_rotatio
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_GE(state_der[4], 0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_no_initial_rotation){
@@ -198,8 +198,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_no_
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_GE(state_der[5], 0.1);
 }
 
@@ -211,8 +211,8 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_LE(state_der[5], -0.1);
 }
 
@@ -225,9 +225,9 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_forward_at_origin_rotated
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_GE(state_der[4], 0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_at_origin_rotated_ccw){
@@ -237,9 +237,9 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_at_origin_rotat
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_LE(state_der[4], -0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_at_origin_rotated_ccw){
@@ -250,8 +250,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_at_origin_rotated_c
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_LE(-0.1, state_der[3]);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_at_origin_rotated_ccw){
@@ -262,8 +262,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_at_origin_rotated_cc
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_GE(state_der[3], 0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_rotated_ccw){
@@ -273,8 +273,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_rot
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_GE(state_der[5], 0.1);
 }
 
@@ -286,8 +286,8 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_LE(state_der[5], -0.1);
 }
 
@@ -302,8 +302,8 @@ TEST_F(OmniWheelRobotModelTest,
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_GE(state_der[3], 0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_in_first_quadrant_no_rotation){
@@ -314,8 +314,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_in_first_quadra
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_LE(state_der[3], -0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_in_first_quadrant_no_rotation){
@@ -325,9 +325,9 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_in_first_quadrant_n
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_LE(state_der[4], -0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_in_first_quadrant_no_rotation){
@@ -337,9 +337,9 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_in_first_quadrant_no
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_GE(0.1, state_der[4]);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_in_first_quadrant_no_initial_rotation){
@@ -349,8 +349,8 @@ TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_in_first_quad
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_GE(0.1, state_der[5]);
 }
 
@@ -362,8 +362,8 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_LE(state_der[5], -0.1);
 }
 
@@ -377,9 +377,9 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_GE(state_der[4], 0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, 
@@ -390,9 +390,9 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
   EXPECT_LE(state_der[4], -0.1);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, 
@@ -404,8 +404,8 @@ TEST_F(OmniWheelRobotModelTest,
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_GE(state_der[3], 0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, 
@@ -417,8 +417,8 @@ TEST_F(OmniWheelRobotModelTest,
   model->computeDynamics(state, control, state_der, NULL);
 
   EXPECT_LE(state_der[3], -0.1);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
-  EXPECT_NEAR(0, state_der[5], 1e-5);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
+  EXPECT_NEAR(0, state_der[5], 1e-4);
 }
 
 TEST_F(OmniWheelRobotModelTest, 
@@ -429,8 +429,8 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_GE(0.1, state_der[5]);
 }
 
@@ -442,14 +442,100 @@ TEST_F(OmniWheelRobotModelTest,
 
   model->computeDynamics(state, control, state_der, NULL);
 
-  EXPECT_NEAR(0, state_der[3], 1e-5);
-  EXPECT_NEAR(0, state_der[4], 1e-5);
+  EXPECT_NEAR(0, state_der[3], 1e-4);
+  EXPECT_NEAR(0, state_der[4], 1e-4);
   EXPECT_LE(state_der[5], -0.1);
+}
+
+//  ------- At Origin, No Rotation, Moving Forwards ----------
+
+TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_forward_at_origin_with_initial_velocity_no_rotation_all_zero_control){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {0, 0, 0, 0};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_NEAR(0, state_der[3], 1e-4);
+    EXPECT_NEAR(0, state_der[4], 1e-4);
+    EXPECT_NEAR(0, state_der[5], 1e-4);
+}
+
+TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_forward_at_origin_with_initial_velocity_no_rotation){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {-1, -1, 1, 1};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_GE(state_der[3], 0.1);
+    EXPECT_NEAR(0, state_der[4], 1e-4);
+    EXPECT_NEAR(0, state_der[5], 1e-4);
+}
+
+TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_backwards_at_origin_with_initial_velocity_no_rotation){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {1, 1, -1, -1};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_LE(state_der[3], -0.1);
+    EXPECT_NEAR(0, state_der[4], 1e-4);
+    EXPECT_NEAR(0, state_der[5], 1e-4);
+}
+
+TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_right_at_origin_with_initial_velocity_no_rotation){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {-1, 1, 1, -1};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_NEAR(0, state_der[3], 1e-4);
+    EXPECT_LE(state_der[4], -0.1);
+    EXPECT_NEAR(0, state_der[5], 1e-4);
+}
+
+TEST_F(OmniWheelRobotModelTest, computeDynamics_moving_left_at_origin_with_initial_velocity_no_rotation){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {1, -1, -1, 1};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_NEAR(0, state_der[3], 1e-4);
+    EXPECT_GE(state_der[4], 0.1);
+    EXPECT_NEAR(0, state_der[5], 1e-4);
+}
+
+TEST_F(OmniWheelRobotModelTest, computeDynamics_spinning_clockwise_at_origin_with_initial_velocity_no_initial_rotation){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {-1, -1, -1, -1};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_NEAR(0, state_der[3], 1e-4);
+    EXPECT_NEAR(0, state_der[4], 1e-4);
+    EXPECT_GE(state_der[5], 0.1);
+}
+
+TEST_F(OmniWheelRobotModelTest,
+       computeDynamics_spinning_counterclockwise_at_origin_with_initial_velocity_no_initial_rotation){
+    float state[6] = {0, 0, 0, 1, -1, -1};
+    float control[4] = {1, 1, 1, 1};
+    float state_der[6] = {0, 0, 0, 0, 0, 0};
+
+    model->computeDynamics(state, control, state_der, NULL);
+
+    EXPECT_NEAR(0, state_der[3], 1e-4);
+    EXPECT_NEAR(0, state_der[4], 1e-4);
+    EXPECT_LE(state_der[5], -0.1);
 }
 
 int main(int argc, char** argv) {
     testing::InitGoogleTest(&argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
-    return 0;
 }

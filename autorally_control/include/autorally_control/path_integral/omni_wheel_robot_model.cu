@@ -34,9 +34,9 @@ void OmniWheelRobotModel::updateState(Eigen::MatrixXf &state, Eigen::MatrixXf &c
   computeKinematics(state);
   computeDynamics(state, control);
 
-  std::cout << "Control:          " <<  std::endl << control << std::endl;
-  std::cout << "State:            " <<  std::endl << state << std::endl;
-  std::cout << "State Derivative: " <<  std::endl << state_der_ << std::endl;
+  //std::cout << "Control:          " <<  std::endl << control << std::endl;
+  //std::cout << "State:            " <<  std::endl << state << std::endl;
+  //std::cout << "State Derivative: " <<  std::endl << state_der_ << std::endl;
   state += state_der_*dt_;
   state_der_ *= 0;
 }
@@ -176,11 +176,13 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
       control[i] *= -1;
   }
 
+  // TODO: this is currently a no-op, remove if so
   // Scale the wheelspeeds
   // TODO: not sure what this is needed for... dbl check in python model
   float scaled_wheel_speeds[4];
   for (int i = 0; i < 4; i++){
-      scaled_wheel_speeds[i] = 4 * pow(M_PI, 2.0) / control[i];
+      scaled_wheel_speeds[i] = control[i];
+      //scaled_wheel_speeds[i] = 4 * pow(M_PI, 2.0) / control[i];
   }
 
   // For each wheel, compute the component of it's velocity in the direction
@@ -210,10 +212,12 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
     float scaled_transformed_wheel_orientation_vec[3];
     multiplyVector3ByScalar(transformed_wheel_orientation_vec,
                             computeWheelFrictionCoeffInWheelDir(v_W),
+                            //computeWheelFrictionCoeffInWheelDir(v_W),
                             scaled_transformed_wheel_orientation_vec);
     float scaled_transformed_wheel_position_vec[3];
     multiplyVector3ByScalar(transformed_wheel_position_vec,
                             computeWheelFrictionCoeffInTransverseDir(v_T),
+                            //computeWheelFrictionCoeffInTransverseDir(v_T),
                             scaled_transformed_wheel_position_vec);
 
     float summed_acceleration[3];
@@ -249,7 +253,7 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
 
   state_der[3] = acceleration[0];
   state_der[4] = acceleration[1];
-  state_der[5] = acceleration[2];
+  state_der[5] = acceleration[2]/100.0;
 }
 
 CUDA_HOSTDEV float OmniWheelRobotModel::computeWheelFrictionCoeffInWheelDir(float wheel_sliding_speed){
