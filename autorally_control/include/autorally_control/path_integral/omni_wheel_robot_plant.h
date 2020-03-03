@@ -85,10 +85,10 @@ inline std::ostream& operator<<(std::ostream& o, const RobotStateMsgQueueEntry& 
 }
 struct RobotWheelCommandsMsgQueueEntry
 {
-    int32_t front_right_milli_rad_per_s;
-    int32_t front_left_milli_rad_per_s;
-    int32_t back_right_milli_rad_per_s;
-    int32_t back_left_milli_rad_per_s;
+    int32_t front_right_milli_newton;
+    int32_t front_left_milli_newton;
+    int32_t back_right_milli_newton;
+    int32_t back_left_milli_newton;
 
     // We represent the timestamp in two parts, with the final timestamp
     // being the sum of the two
@@ -99,10 +99,10 @@ inline std::ostream& operator<<(std::ostream& o,
                                 const RobotWheelCommandsMsgQueueEntry& cmds)
 {
     // clang-format off
-    o << "Front Right: "                      << cmds.front_right_milli_rad_per_s 
-      << ", Front Left: "                     << cmds.front_left_milli_rad_per_s
-      << ", Back Right: "                     << cmds.back_right_milli_rad_per_s 
-      << ", Back Left: "                      << cmds.back_left_milli_rad_per_s
+    o << "Front Right: "                      << cmds.front_right_milli_newton 
+      << ", Front Left: "                     << cmds.front_left_milli_newton
+      << ", Back Right: "                     << cmds.back_right_milli_newton 
+      << ", Back Left: "                      << cmds.back_left_milli_newton
       << ", timestamp_secs: "                 << cmds.timestamp_secs
       << ", timestamp_nano_secs_correction: " << cmds.timestamp_nano_secs_correction;
     // clang-format on

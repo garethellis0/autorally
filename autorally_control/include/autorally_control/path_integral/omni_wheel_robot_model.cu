@@ -122,7 +122,6 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   static_assert(DYNAMICS_DIM == 3, "");
 
   // Simple model with no wheel slip
-
   for (int i = 0; i < CONTROL_DIM; i++){
       control[i] *= -1;
   }

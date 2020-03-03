@@ -94,6 +94,11 @@ control/include/control/gpsWaypoint_paramsConfig.h
 ##########################
 *.user
 
+#############################
+# CLion user-specific files #
+#############################
+cmake-build-debug
+.idea
 
 ###########################
 # Vim user-specific files #

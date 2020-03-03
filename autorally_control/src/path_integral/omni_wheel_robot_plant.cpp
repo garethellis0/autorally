@@ -343,20 +343,20 @@ void OmniWheelRobotPlant::pubControl(OmniWheelRobotPlant::ControlVector wheel_co
 
   if (wheel_commands.hasNaN()){ 
     ROS_INFO("NaN Control Input Detected");
-    wheel_commands_queue_entry.front_left_milli_rad_per_s = 0;
-    wheel_commands_queue_entry.front_right_milli_rad_per_s = 0;
-    wheel_commands_queue_entry.back_left_milli_rad_per_s = 0;
-    wheel_commands_queue_entry.back_right_milli_rad_per_s = 0;
+    wheel_commands_queue_entry.front_left_milli_newton = 0;
+    wheel_commands_queue_entry.front_right_milli_newton = 0;
+    wheel_commands_queue_entry.back_left_milli_newton = 0;
+    wheel_commands_queue_entry.back_right_milli_newton = 0;
 
     robot_wheel_commands_message_queue.timed_send(
         &wheel_commands_queue_entry, sizeof(wheel_commands_queue_entry), 0, t_timeout);
 
     ros::shutdown(); //No use trying to recover, quitting is the best option.
   } else {
-    wheel_commands_queue_entry.front_left_milli_rad_per_s = wheel_commands(0) * 1000;
-    wheel_commands_queue_entry.front_right_milli_rad_per_s = wheel_commands(1) * 1000;
-    wheel_commands_queue_entry.back_left_milli_rad_per_s = wheel_commands(2) * 1000;
-    wheel_commands_queue_entry.back_right_milli_rad_per_s = wheel_commands(3) * 1000;
+    wheel_commands_queue_entry.front_left_milli_newton = wheel_commands(0) * 1000;
+    wheel_commands_queue_entry.front_right_milli_newton = wheel_commands(1) * 1000;
+    wheel_commands_queue_entry.back_left_milli_newton = wheel_commands(2) * 1000;
+    wheel_commands_queue_entry.back_right_milli_newton = wheel_commands(3) * 1000;
 
     ROS_INFO_STREAM("Transmitting Commands: " << wheel_commands_queue_entry);
     bool send_succeeded = robot_wheel_commands_message_queue.timed_send(

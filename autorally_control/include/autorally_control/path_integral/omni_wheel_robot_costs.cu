@@ -1,6 +1,5 @@
 /*
-* Software License Agreement (BSD License)
-* Copyright (c) 2013, Georgia Institute of Technology
+* Software License Agreement (BSD License) Copyright (c) 2013, Georgia Institute of Technology
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -380,10 +379,10 @@ inline __device__ float OmniWheelRobotMPPICosts::getTrackCost(float* s, int* cra
 inline __device__ float OmniWheelRobotMPPICosts::computeCost(float* s, float* u, float* du, 
                                         float* vars, int* crash, int timestep)
 {
-  // TODO: delete
-  float dx = s[0] + 4;
-  float dy = s[1] + 6;
-  return sqrt(10*pow(dx, 2.0) + 10*pow(dy, 2.0));
+  //// TODO: delete
+  //float dx = s[0];
+  //float dy = s[1];
+  //return sqrt(10*pow(dx, 2.0) + 10*pow(dy, 2.0));
 
   float control_cost = getControlCost(u, du, vars);
   float track_cost = getTrackCost(s, crash);
