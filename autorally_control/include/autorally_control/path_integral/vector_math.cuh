@@ -143,6 +143,12 @@ CUDA_HOSTDEV static void getUnitVectorInDirection(const float dir[3], float resu
   }
   length = sqrt(length);
 
+  // Check for 0 length, in which case length can be anything _but_ zero and
+  // the resulting vector will still be all zero
+  if (length == 0){
+      length = 1;
+  }
+
   for (int i = 0; i < 3; i++){
     result[i] = dir[i] / length;
   }

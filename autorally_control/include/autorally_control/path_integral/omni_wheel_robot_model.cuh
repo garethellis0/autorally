@@ -24,6 +24,7 @@ struct float2 {
   float x;
   float y;
 };
+using namespace std;
 #endif
 
 namespace autorally_control {
@@ -158,7 +159,7 @@ protected:
   // The moment of inertia of the robot. We init this in the constructor
   // because it uses pow(radius), but pow is not a constepxr function
   const float ROBOT_MOMENT_OF_INERTIA;
-  // The radius of each wheel 
+  // The radius of each wheel
   static constexpr float WHEEL_RADIUS_M = 0.02;
   // The coefficient of friction for the wheels when the wheel is being
   // translated parallel to it's direction of rotation
@@ -174,6 +175,14 @@ protected:
   // about zero sliding velocity
   //static constexpr float FRICTION_COEFF_TRANSITION_COEFF = 1000;
   static constexpr float FRICTION_COEFF_TRANSITION_COEFF = 100;
+  // The maximum linear speed of the robot
+  static constexpr float MAX_LINEAR_SPEED_M_PER_S = 2.0;
+  // The maximum angular speed of the robot
+  static constexpr float MAX_ANGULAR_SPEED_RAD_PER_S = 2.0;
+  // The maximum linear acceleration of the robot
+  static constexpr float MAX_LINEAR_ACCELERATION_M_PER_S_PER_S = 3.0;
+  // The maximum angular acceleration of the robot
+  static constexpr float MAX_ANGULAR_ACCELERATION_RAD_PER_S_PER_S = 5.0;
 
   double dt_;
   double max_abs_wheel_speed_;

@@ -1,5 +1,7 @@
 #include "vector_math.cuh"
 
+#include <math.h>
+
 namespace autorally_control {
 
 OmniWheelRobotModel::OmniWheelRobotModel(double dt, double max_abs_wheel_speed) :
@@ -100,9 +102,28 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeKinematics(float* state, float* st
   //state_der[0] = cosf(-state[2])*state[3] - sinf(-state[2])*state[4];
   //state_der[1] = sinf(-state[2])*state[3] + cosf(-state[2])*state[4];
   //state_der[2] = state[5];
-  state_der[0] = state[3];
-  state_der[1] = state[4];
-  state_der[2] = state[5];
+
+  // Limit velocity to within the max permitted
+  float linear_velocity[3] = {state[3], state[4], 0};
+  const float curr_abs_velocity = sqrt(pow(state[3],2.0) + pow(state[4], 2.0));
+  float linear_velocity_unit_vector[3];
+  getUnitVectorInDirection(linear_velocity, linear_velocity_unit_vector);
+  const float max_abs_linear_speed = MAX_LINEAR_SPEED_M_PER_S;
+  float clamped_linear_velocity[3];
+  multiplyVector3ByScalar(
+      linear_velocity_unit_vector,
+      min(curr_abs_velocity, max_abs_linear_speed),
+      clamped_linear_velocity
+      );
+  const float max_abs_angular_velocity = MAX_ANGULAR_SPEED_RAD_PER_S;
+  const float clampled_angular_velocity = 
+    min(
+            max(state[5], -max_abs_angular_velocity),
+            max_abs_angular_velocity);
+
+  state_der[0] = clamped_linear_velocity[0];
+  state_der[1] = clamped_linear_velocity[1]; 
+  state_der[2] = clampled_angular_velocity;
 
   // TODO: delete this
   //state_der[0] = min(max(state_der[0], -1.0), 1.0);
@@ -129,22 +150,48 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   const float yaw = state[2];
   const float t1 = FRONT_WHEEL_ANGLE_RAD;
   const float t2 = REAR_WHEEL_ANGLE_RAD;
-  float acceleration[3];
-  acceleration[0] =
+  const float a_x =
           ROBOT_MASS_KG * sin(t1) * control[0] +
           ROBOT_MASS_KG * sin(t2) * control[1] +
           -ROBOT_MASS_KG * sin(t2) * control[2] +
           -ROBOT_MASS_KG * sin(t1) * control[3];
-  acceleration[1] =
+  const float a_y =
           -ROBOT_MASS_KG * cos(t1) * control[0] +
           ROBOT_MASS_KG * cos(t2) * control[1] +
           ROBOT_MASS_KG * cos(t2) * control[2] +
           -ROBOT_MASS_KG * cos(t1) * control[3];
-  acceleration[2] =
+  const float a_angular =
           ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[0] +
           ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[1] +
           ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[2] +
           ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[3];
+
+  // Rescale acceleration to keep it within limits
+  const float curr_abs_acceleration = 
+    sqrt(pow(a_x, 2.0) + pow(a_y, 2.0));
+  float linear_acceleration_vector[3] = {a_x, a_y, 0};
+  float linear_acceleration_unit_vector[3];
+  getUnitVectorInDirection(
+    linear_acceleration_vector, 
+    linear_acceleration_unit_vector);
+  float linear_acceleration_clamped[3];
+  const float max_abs_linear_accel = MAX_LINEAR_ACCELERATION_M_PER_S_PER_S;
+  multiplyVector3ByScalar(
+    linear_acceleration_unit_vector, 
+    min(curr_abs_acceleration, max_abs_linear_accel),
+    linear_acceleration_clamped);
+
+  const float max_abs_angular_acceleration = MAX_ANGULAR_ACCELERATION_RAD_PER_S_PER_S;
+  const float a_angular_clamped = 
+    min(
+      max(a_angular, -max_abs_angular_acceleration),
+      max_abs_angular_acceleration);
+
+  float acceleration[3] = {
+    linear_acceleration_clamped[0],
+    linear_acceleration_clamped[1],
+    a_angular_clamped
+  };
 
   rotateVector3AboutZAxis(acceleration, yaw, &state_der[3]);
 
