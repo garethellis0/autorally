@@ -151,20 +151,17 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   const float t1 = FRONT_WHEEL_ANGLE_RAD;
   const float t2 = REAR_WHEEL_ANGLE_RAD;
   const float a_x =
-          ROBOT_MASS_KG * sin(t1) * control[0] +
-          ROBOT_MASS_KG * sin(t2) * control[1] +
-          -ROBOT_MASS_KG * sin(t2) * control[2] +
-          -ROBOT_MASS_KG * sin(t1) * control[3];
+          sin(t1) * control[0] / ROBOT_MASS_KG  +
+          sin(t2) * control[1] / ROBOT_MASS_KG  +
+          sin(t2) * control[2] / -ROBOT_MASS_KG +
+          sin(t1) * control[3] / -ROBOT_MASS_KG;
   const float a_y =
-          -ROBOT_MASS_KG * cos(t1) * control[0] +
-          ROBOT_MASS_KG * cos(t2) * control[1] +
-          ROBOT_MASS_KG * cos(t2) * control[2] +
-          -ROBOT_MASS_KG * cos(t1) * control[3];
-  const float a_angular =
-          ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[0] +
-          ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[1] +
-          ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[2] +
-          ROBOT_MOMENT_OF_INERTIA/ROBOT_MASS_KG * control[3];
+          cos(t1) * control[0] / -ROBOT_MASS_KG +
+          cos(t2) * control[1] / ROBOT_MASS_KG +
+          cos(t2) * control[2] / ROBOT_MASS_KG +
+          cos(t1) * control[3] / -ROBOT_MASS_KG;
+  const float a_angular = (control[0] + control[1] + control[2] + control[3]) 
+    / ROBOT_MOMENT_OF_INERTIA;
 
   // Rescale acceleration to keep it within limits
   const float curr_abs_acceleration = 
