@@ -196,7 +196,7 @@ void OmniWheelRobotPlant::newStateCallback(RobotStateMsgQueueEntry new_state)
     activated_ = true;
     //Update position
     full_state_.x_pos = new_state.x_pos_mm / 1000.0;
-    full_state_.y_pos = new_state.y_pos_mm / 10000.0;
+    full_state_.y_pos = new_state.y_pos_mm / 1000.0;
     full_state_.yaw = new_state.yaw_milli_rad / 1000.0;
 
     //Don't allow heading to wrap around
