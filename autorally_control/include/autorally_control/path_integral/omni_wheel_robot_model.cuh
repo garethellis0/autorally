@@ -49,9 +49,9 @@ public:
    * Create an instance of this model
 
    * @param dt The timestep for a single state update step.
-   * @param max_abs_wheel_speed The maximum absolute permissable wheel speed
+   * @param max_abs_wheel_force The maximum absolute permissable wheel speed
    */
-  OmniWheelRobotModel(double dt, double max_abs_wheel_speed);
+  OmniWheelRobotModel(double dt, double max_abs_wheel_force);
 
   /**
    * Modifies the control and state in-place to obey this models constraints
@@ -185,7 +185,7 @@ protected:
   static constexpr float MAX_ANGULAR_ACCELERATION_RAD_PER_S_PER_S = 5.0;
 
   double dt_;
-  double max_abs_wheel_speed_;
+  double max_abs_wheel_force_;
 };
 
 }

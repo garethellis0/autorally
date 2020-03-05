@@ -341,35 +341,22 @@ inline __host__ __device__ void OmniWheelRobotMPPICosts::coorTransform(float x, 
 
 inline __device__ float OmniWheelRobotMPPICosts::getTrackCost(float* s, int* crash)
 {
-  float track_cost = 0;
-
-  //Compute a transformation to get the (x,y) positions of the front and back of the car.
-  float x_front = s[0] + FRONT_D*__cosf(s[2]);
-  float y_front = s[1] + FRONT_D*__sinf(s[2]);
-  float x_back = s[0] + BACK_D*__cosf(s[2]);
-  float y_back = s[1] + BACK_D*__sinf(s[2]);
-
   float u,v,w; //Transformed coordinates
 
-  //Cost of front of the car
-  coorTransform(x_front, y_front, &u, &v, &w);
-  float4 track_params_front = tex2D<float4>(costmap_tex_, u/w, v/w); 
+  //Cost of center of robot on track
+  coorTransform(s[0], s[1], &u, &v, &w);
+  float4 track_params = tex2D<float4>(costmap_tex_, u/w, v/w); 
 
-  //Cost for back of the car
-  coorTransform(x_back, y_back, &u, &v, &w);
-  float4 track_params_back = tex2D<float4>(costmap_tex_, u/w, v/w);
+  float track_cost = fabs(track_params.x)/2.0;
 
-  float track_cost_front = track_params_front.x;
-  float track_cost_back = track_params_back.x;
-
-  track_cost = (fabs(track_cost_front) + fabs(track_cost_back) )/2.0;
   if (fabs(track_cost) < params_d_->track_slop) {
     track_cost = 0;
   }
   else {
     track_cost = params_d_->track_coeff*track_cost;
   }
-  if (track_cost_front >= params_d_->boundary_threshold || track_cost_back >= params_d_->boundary_threshold) {
+
+  if (track_cost >= params_d_->boundary_threshold) {
     crash[0] = 1;
   }
   return track_cost;

@@ -157,11 +157,13 @@ void OmniWheelRobotPlant::pubTimingData(const ros::TimerEvent&)
   timing_data_pub_.publish(timingData_);
 }
 
-void OmniWheelRobotPlant::setDebugImage(cv::Mat img)
+void OmniWheelRobotPlant::setDebugImages(cv::Mat actual_state_controller_img, 
+      cv::Mat predicted_state_controller_img)
 {
   receivedDebugImg_ = true;
   boost::mutex::scoped_lock lock(access_guard_);
-  debugImg_ = img;
+  debugPredictedStateControllerImg_ = predicted_state_controller_img;
+  debugActualStateControllerImg_ = actual_state_controller_img;
 }
 
 void OmniWheelRobotPlant::displayDebugImage(const ros::TimerEvent&)
@@ -169,8 +171,16 @@ void OmniWheelRobotPlant::displayDebugImage(const ros::TimerEvent&)
   if (receivedDebugImg_.load() && !is_nodelet_) {
     {
       boost::mutex::scoped_lock lock(access_guard_);
-      cv::namedWindow(nodeNamespace_, cv::WINDOW_AUTOSIZE);
-      cv::imshow(nodeNamespace_, debugImg_);
+
+      std::string actual_state_controller_window_name = 
+        nodeNamespace_ + "/ActualStateController";
+      cv::namedWindow(actual_state_controller_window_name, cv::WINDOW_AUTOSIZE);
+      cv::imshow(actual_state_controller_window_name, debugActualStateControllerImg_);
+
+      std::string predicted_state_controller_window_name = 
+        nodeNamespace_ + "/PredictedStateController";
+      cv::namedWindow(predicted_state_controller_window_name, cv::WINDOW_AUTOSIZE);
+      cv::imshow(predicted_state_controller_window_name, debugPredictedStateControllerImg_);
     } 
   }
   if (receivedDebugImg_.load() && !is_nodelet_){

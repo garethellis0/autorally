@@ -269,8 +269,6 @@ public:
 protected:
 
   //Constant variables
-  const float FRONT_D = 0.5; ///< Distance from GPS receiver to front of car.
-  const float BACK_D = -0.5; ///< Distance from GPS receiver to back of car.
   const float DISCOUNT = 0.9; ///< Discount on the crashing cost coefficient
 
   bool l1_cost_; //Whether to use L1 speed cost (if false it is L2)

@@ -81,7 +81,7 @@ typedef MPPIController<DynamicsModel, Costs, MPPI_NUM_ROLLOUTS__,
  * @return A dynamics model
  */
 DynamicsModel* createDynamicsModel(ros::NodeHandle nh){
-  const float max_wheel_speed = getRosParam<float>("max_abs_wheel_speed", nh);
+  const float max_wheel_speed = getRosParam<float>("max_abs_wheel_force", nh);
   const int controls_frequency = 
     getRosParam<int>("controls_frequency", nh);
 

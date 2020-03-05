@@ -19,11 +19,11 @@
     <param name="debug_mode" value="true" />
 
     <!--Setup parameters-->
-    <param name="num_timesteps" value="1000" />
-    <param name="x_pos" value="-3" />
-    <param name="y_pos" value="-9" />
-    <param name="heading" value="2.35" />
-    <param name="wheel_speed_exploration_variance" value="0.1" />
+    <param name="num_timesteps" value="50" />
+    <param name="x_pos" value="0" />
+    <param name="y_pos" value="0" />
+    <param name="heading" value="0" />
+    <param name="wheel_speed_exploration_variance" value="0.5" />
 
     <!-- How many controls are executed between optimization loops -->
     <param name="optimization_stride" value="1" />
@@ -38,7 +38,7 @@
     <!-- Control Constraints -->
     <!-- TODO: this is really the max abs per-wheel control, rename -->
     <param name="max_abs_wheel_force" value="2.5" />
-    <param name="controls_frequency" value="50" />
+    <param name="controls_frequency" value="10" />
 
     <!-- Cost Parameters -->
     <param name="l1_cost" value="false" />
@@ -56,7 +56,7 @@
     <!-- Tube-MPC Parameters -->
     <!-- TODO: replace these two bools with an enum somehow? -->
     <param name="use_only_actual_state_controller" value="false" />
-    <param name="use_only_predicted_state_controller" value="false" />
+    <param name="use_only_predicted_state_controller" value="true" />
 
   </node>
 

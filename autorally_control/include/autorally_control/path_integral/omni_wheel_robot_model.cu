@@ -4,15 +4,15 @@
 
 namespace autorally_control {
 
-OmniWheelRobotModel::OmniWheelRobotModel(double dt, double max_abs_wheel_speed) :
+OmniWheelRobotModel::OmniWheelRobotModel(double dt, double max_abs_wheel_force) :
   dt_(dt),
-  max_abs_wheel_speed_(max_abs_wheel_speed),
+  max_abs_wheel_force_(max_abs_wheel_force),
   ROBOT_MOMENT_OF_INERTIA(0.5 * ROBOT_MASS_KG * pow(ROBOT_RADIUS_M, 2.0)) {
 
   control_rngs_ = new float2[CONTROL_DIM];
   for (int i = 0; i < CONTROL_DIM; i++){
-    control_rngs_[i].x = -max_abs_wheel_speed;
-    control_rngs_[i].y = max_abs_wheel_speed;
+    control_rngs_[i].x = -max_abs_wheel_force;
+    control_rngs_[i].y = max_abs_wheel_force;
   }
 
   for (int i = 0; i < STATE_DIM; i++){
@@ -136,6 +136,11 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   // TODO: if performance is an issue, there are several things here that
   //       we can cache and not recompute, like the wheel vectors
 
+  state_der[3] = control[0];
+  state_der[4] = control[1];
+  state_der[5] = control[2];
+  return;
+
   // This function assumes there are 4 control inputs, one for each wheel
   static_assert(CONTROL_DIM == 4, "");
 
@@ -150,18 +155,21 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   const float yaw = state[2];
   const float t1 = FRONT_WHEEL_ANGLE_RAD;
   const float t2 = REAR_WHEEL_ANGLE_RAD;
-  const float a_x =
-          sin(t1) * control[0] / ROBOT_MASS_KG  +
-          sin(t2) * control[1] / ROBOT_MASS_KG  +
-          sin(t2) * control[2] / -ROBOT_MASS_KG +
-          sin(t1) * control[3] / -ROBOT_MASS_KG;
-  const float a_y =
-          cos(t1) * control[0] / -ROBOT_MASS_KG +
-          cos(t2) * control[1] / ROBOT_MASS_KG +
-          cos(t2) * control[2] / ROBOT_MASS_KG +
-          cos(t1) * control[3] / -ROBOT_MASS_KG;
-  const float a_angular = (control[0] + control[1] + control[2] + control[3]) 
-    / ROBOT_MOMENT_OF_INERTIA;
+  const float a_x = control[0];
+  //const float a_x =
+  //        sin(t1) * control[0] / ROBOT_MASS_KG  +
+  //        sin(t2) * control[1] / ROBOT_MASS_KG  +
+  //        sin(t2) * control[2] / -ROBOT_MASS_KG +
+  //        sin(t1) * control[3] / -ROBOT_MASS_KG;
+  const float a_y = control[1];
+  //const float a_y =
+  //        cos(t1) * control[0] / -ROBOT_MASS_KG +
+  //        cos(t2) * control[1] / ROBOT_MASS_KG +
+  //        cos(t2) * control[2] / ROBOT_MASS_KG +
+  //        cos(t1) * control[3] / -ROBOT_MASS_KG;
+  const float a_angular = control[2];
+  //const float a_angular = (control[0] + control[1] + control[2] + control[3]) 
+  //  / ROBOT_MOMENT_OF_INERTIA;
 
   // Rescale acceleration to keep it within limits
   const float curr_abs_acceleration = 
@@ -190,7 +198,7 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
     a_angular_clamped
   };
 
-  rotateVector3AboutZAxis(acceleration, yaw, &state_der[3]);
+  rotateVector3AboutZAxis(acceleration, 0, &state_der[3]);
 
 //  state_der[3] = a_x;
 //  state_der[4] = a_y;

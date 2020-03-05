@@ -154,8 +154,9 @@ public:
   boost::mutex access_guard_;
   std::string nodeNamespace_;
 
-  // The most recent debug image that we've received
-  cv::Mat debugImg_;
+  // The most recent debug images that we've received
+  cv::Mat debugPredictedStateControllerImg_;
+  cv::Mat debugActualStateControllerImg_;
 
   // Whether or not we've received the first solution
   bool solutionReceived_ = false;
@@ -263,9 +264,13 @@ public:
   /**
    * @brief Set the debug image to the given one
    *
-   * @param img The new debug image
+   * @param actual_state_controller_img The new debug image for the actual 
+   *                                    state controller
+   * @param predicted_state_controller_img The new debug image for the 
+   *                                       predicted state controller
    */
-  void setDebugImage(cv::Mat img);
+  void setDebugImages(cv::Mat actual_state_controller_img, 
+      cv::Mat predicted_state_controller_img);
 
   // TODO: bit nasty this, why can't we do timing internally to this class
   /**

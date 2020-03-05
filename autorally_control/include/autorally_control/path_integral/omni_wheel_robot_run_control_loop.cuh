@@ -145,14 +145,17 @@ void omniWheelRobotRunControlLoop(
       // TODO: need two debug windows, (actual and predicted states)
 
      // display costs around actual robot state
-     cv::Mat debug_img = actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
-     robot->setDebugImage(debug_img);
+     cv::Mat actual_state_controller_debug_img = 
+       actual_state_controller->costs_->getDebugDisplay(state(0), state(1), state(2));
 
      // display costs around predicted robot state
-     //std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
-     //cv::Mat debug_img = predicted_state_controller->costs_->getDebugDisplay(
-     //    controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
-     //robot->setDebugImage(debug_img);
+     std::vector<float> controller_state_sequence = predicted_state_controller->getStateSeq();
+     cv::Mat predicted_state_controller_debug_image = 
+       predicted_state_controller->costs_->getDebugDisplay(
+         controller_state_sequence[0], controller_state_sequence[1], controller_state_sequence[2]);
+
+     robot->setDebugImages(actual_state_controller_debug_img, 
+         predicted_state_controller_debug_image);
     }
 
     //Update the state estimate
@@ -209,9 +212,6 @@ void omniWheelRobotRunControlLoop(
 
     // TODO: clean this up, gross amount of duplication
     ControllerType controller_used = ControllerType::NONE;
-
-    // TODO: delete this
-    controller_to_use = ControllerType::ACTUAL_STATE;
 
     switch(controller_to_use){
       case ControllerType::NONE:
