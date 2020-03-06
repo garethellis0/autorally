@@ -95,14 +95,6 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeKinematics(float* state, float* st
   static_assert(KINEMATICS_DIM == 3, "");
   static_assert(STATE_DIM == 6, "");
 
-  // TODO: not sure which of these is correct...
-
-  // The change in the 0th derivative terms (x, y, yaw) is from the 1st
-  // derivative terms (v_x, v_y, v_angular)
-  //state_der[0] = cosf(-state[2])*state[3] - sinf(-state[2])*state[4];
-  //state_der[1] = sinf(-state[2])*state[3] + cosf(-state[2])*state[4];
-  //state_der[2] = state[5];
-
   // Limit velocity to within the max permitted
   float linear_velocity[3] = {state[3], state[4], 0};
   const float curr_abs_velocity = sqrt(pow(state[3],2.0) + pow(state[4], 2.0));
@@ -116,30 +108,19 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeKinematics(float* state, float* st
       clamped_linear_velocity
       );
   const float max_abs_angular_velocity = MAX_ANGULAR_SPEED_RAD_PER_S;
-  const float clampled_angular_velocity = 
-    min(
-            max(state[5], -max_abs_angular_velocity),
-            max_abs_angular_velocity);
+  const float clamped_angular_velocity = 
+    min(max(state[5], -max_abs_angular_velocity),
+        max_abs_angular_velocity);
 
   state_der[0] = clamped_linear_velocity[0];
   state_der[1] = clamped_linear_velocity[1]; 
-  state_der[2] = clampled_angular_velocity;
-
-  // TODO: delete this
-  //state_der[0] = min(max(state_der[0], -1.0), 1.0);
-  //state_der[1] = min(max(state_der[1], -1.0), 1.0);
-  //state_der[2] = min(max(state_der[2], -1.0), 1.0);
+  state_der[2] = clamped_angular_velocity;
 }
 
 CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
     float* state, float* control, float* state_der, float* theta_s){
   // TODO: if performance is an issue, there are several things here that
   //       we can cache and not recompute, like the wheel vectors
-
-  state_der[3] = control[0];
-  state_der[4] = control[1];
-  state_der[5] = control[2];
-  return;
 
   // This function assumes there are 4 control inputs, one for each wheel
   static_assert(CONTROL_DIM == 4, "");
@@ -148,28 +129,21 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   static_assert(DYNAMICS_DIM == 3, "");
 
   // Simple model with no wheel slip
-  for (int i = 0; i < CONTROL_DIM; i++){
-      control[i] *= -1;
-  }
-
-  const float yaw = state[2];
+  const float yaw = 0;
   const float t1 = FRONT_WHEEL_ANGLE_RAD;
   const float t2 = REAR_WHEEL_ANGLE_RAD;
-  const float a_x = control[0];
-  //const float a_x =
-  //        sin(t1) * control[0] / ROBOT_MASS_KG  +
-  //        sin(t2) * control[1] / ROBOT_MASS_KG  +
-  //        sin(t2) * control[2] / -ROBOT_MASS_KG +
-  //        sin(t1) * control[3] / -ROBOT_MASS_KG;
-  const float a_y = control[1];
-  //const float a_y =
-  //        cos(t1) * control[0] / -ROBOT_MASS_KG +
-  //        cos(t2) * control[1] / ROBOT_MASS_KG +
-  //        cos(t2) * control[2] / ROBOT_MASS_KG +
-  //        cos(t1) * control[3] / -ROBOT_MASS_KG;
-  const float a_angular = control[2];
-  //const float a_angular = (control[0] + control[1] + control[2] + control[3]) 
-  //  / ROBOT_MOMENT_OF_INERTIA;
+  const float a_x =
+          sin(t1) * control[0] / -ROBOT_MASS_KG  +
+          sin(t2) * control[1] / -ROBOT_MASS_KG  +
+          sin(t2) * control[2] / ROBOT_MASS_KG +
+          sin(t1) * control[3] / ROBOT_MASS_KG;
+  const float a_y =
+          cos(t1) * control[0] / ROBOT_MASS_KG +
+          cos(t2) * control[1] / -ROBOT_MASS_KG +
+          cos(t2) * control[2] / -ROBOT_MASS_KG +
+          cos(t1) * control[3] / ROBOT_MASS_KG;
+  const float a_angular = -(control[0] + control[1] + control[2] + control[3]) 
+    / ROBOT_MOMENT_OF_INERTIA;
 
   // Rescale acceleration to keep it within limits
   const float curr_abs_acceleration = 
@@ -198,7 +172,7 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
     a_angular_clamped
   };
 
-  rotateVector3AboutZAxis(acceleration, 0, &state_der[3]);
+  rotateVector3AboutZAxis(acceleration, yaw, &state_der[3]);
 
 //  state_der[3] = a_x;
 //  state_der[4] = a_y;

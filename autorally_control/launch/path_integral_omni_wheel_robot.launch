@@ -42,7 +42,7 @@
 
     <!-- Cost Parameters -->
     <param name="l1_cost" value="false" />
-    <param name="desired_speed" value="1.0" />
+    <param name="desired_speed" value="2.0" />
     <!--<param name="speed_coefficient" value="4.25" />-->
     <param name="speed_coefficient" value="4.25" />
     <!--<param name="track_coefficient" value="200.0" />-->

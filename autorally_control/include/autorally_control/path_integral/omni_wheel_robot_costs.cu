@@ -309,7 +309,7 @@ inline __host__ __device__ float OmniWheelRobotMPPICosts::getControlCost(float* 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getSpeedCost(float* s, int* crash)
 {
   float cost = 0;
-  float abs_speed = sqrt(pow(s[4], 2.0) + pow(s[5], 2.0));
+  float abs_speed = sqrt(pow(s[3], 2.0) + pow(s[4], 2.0));
   float error = abs_speed - params_d_->desired_speed;
   if (l1_cost_){
     cost = fabs(error);
