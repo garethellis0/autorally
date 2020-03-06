@@ -309,7 +309,8 @@ inline __host__ __device__ float OmniWheelRobotMPPICosts::getControlCost(float* 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getSpeedCost(float* s, int* crash)
 {
   float cost = 0;
-  float error = s[4] - params_d_->desired_speed;
+  float abs_speed = sqrt(pow(s[4], 2.0) + pow(s[5], 2.0));
+  float error = abs_speed - params_d_->desired_speed;
   if (l1_cost_){
     cost = fabs(error);
   }
@@ -321,9 +322,10 @@ inline __host__ __device__ float OmniWheelRobotMPPICosts::getSpeedCost(float* s,
 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getCrashCost(float* s, int* crash, int timestep)
 {
-  // Carryover from when this was controlling an RC car, we don't consider
-  // this a crash
   return 0;
+
+  // NOTE: Carryover from when this was controlling an RC car, we don't 
+  //       consider this a crash
   //float crash_cost = 0;
   //if (crash[0] > 0) {
   //    crash_cost = params_d_->crash_coeff;
