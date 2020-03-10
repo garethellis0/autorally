@@ -30,21 +30,21 @@
     <param name="use_feedback_gains" value="false" />
 
     <!-- Control hyper-parameters-->
-    <param name="norm_exp_kernel_gamma" value=".15" />
+    <param name="norm_exp_kernel_gamma" value=".5" />
     <param name="num_optimization_iters" value="1" />
 
     <!-- Control parameters -->
 
     <!-- Control Constraints -->
     <!-- TODO: this is really the max abs per-wheel control, rename -->
-    <param name="max_abs_wheel_force" value="2.5" />
-    <param name="controls_frequency" value="10" />
+    <param name="max_abs_wheel_force" value="0.8" />
+    <param name="controls_frequency" value="60" />
 
     <!-- Cost Parameters -->
     <param name="l1_cost" value="false" />
-    <param name="desired_speed" value="2.0" />
+    <param name="desired_speed" value="1.0" />
     <!--<param name="speed_coefficient" value="4.25" />-->
-    <param name="speed_coefficient" value="4.25" />
+    <param name="speed_coefficient" value="0.00" />
     <!--<param name="track_coefficient" value="200.0" />-->
     <param name="track_coefficient" value="200.0" />
     <param name="track_slop" value="0.0" />
@@ -55,8 +55,8 @@
 
     <!-- Tube-MPC Parameters -->
     <!-- TODO: replace these two bools with an enum somehow? -->
-    <param name="use_only_actual_state_controller" value="false" />
-    <param name="use_only_predicted_state_controller" value="true" />
+    <param name="use_only_actual_state_controller" value="true" />
+    <param name="use_only_predicted_state_controller" value="false" />
 
   </node>
 

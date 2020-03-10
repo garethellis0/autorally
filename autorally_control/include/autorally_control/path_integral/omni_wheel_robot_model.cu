@@ -129,7 +129,7 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
   static_assert(DYNAMICS_DIM == 3, "");
 
   // Simple model with no wheel slip
-  const float yaw = 0;
+  const float yaw = state[2];
   const float t1 = FRONT_WHEEL_ANGLE_RAD;
   const float t2 = REAR_WHEEL_ANGLE_RAD;
   const float a_x =
@@ -137,21 +137,34 @@ CUDA_HOSTDEV void OmniWheelRobotModel::computeDynamics(
           sin(t2) * control[1] / -ROBOT_MASS_KG  +
           sin(t2) * control[2] / ROBOT_MASS_KG +
           sin(t1) * control[3] / ROBOT_MASS_KG;
-  const float a_y =
+  const float a_y  =
           cos(t1) * control[0] / ROBOT_MASS_KG +
           cos(t2) * control[1] / -ROBOT_MASS_KG +
           cos(t2) * control[2] / -ROBOT_MASS_KG +
           cos(t1) * control[3] / ROBOT_MASS_KG;
-  const float a_angular = -(control[0] + control[1] + control[2] + control[3]) 
+  const float a_angular = (control[0] + control[1] + control[2] + control[3]) 
     / ROBOT_MOMENT_OF_INERTIA;
+
+  // Rescale acceleration based on the current velocity to help model
+  // the initial force required to overcome static "friction"
+  float linear_acceleration_vector[3] = {a_x, a_y, 0};
+  const float abs_velocity = sqrt(pow(state[3], 2.0) + pow(state[4], 2.0));
+  // TODO: delete if unused
+  //const float friction_scaling_factor = 1.40 / (1.0 + exp(-10*abs_velocity)) - 0.40;
+  const float friction_scaling_factor = 1.0;
+  float linear_acceleration_vector_with_friction[3];
+  multiplyVector3ByScalar(
+    linear_acceleration_vector, 
+    friction_scaling_factor,
+    linear_acceleration_vector_with_friction);
 
   // Rescale acceleration to keep it within limits
   const float curr_abs_acceleration = 
-    sqrt(pow(a_x, 2.0) + pow(a_y, 2.0));
-  float linear_acceleration_vector[3] = {a_x, a_y, 0};
+    sqrt(pow(linear_acceleration_vector_with_friction[0], 2.0) + 
+        pow(linear_acceleration_vector_with_friction[1], 2.0));
   float linear_acceleration_unit_vector[3];
   getUnitVectorInDirection(
-    linear_acceleration_vector, 
+    linear_acceleration_vector_with_friction, 
     linear_acceleration_unit_vector);
   float linear_acceleration_clamped[3];
   const float max_abs_linear_accel = MAX_LINEAR_ACCELERATION_M_PER_S_PER_S;

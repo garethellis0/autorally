@@ -308,6 +308,8 @@ inline __host__ __device__ float OmniWheelRobotMPPICosts::getControlCost(float* 
 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getSpeedCost(float* s, int* crash)
 {
+
+  // TODO: delete me
   float cost = 0;
   float abs_speed = sqrt(pow(s[3], 2.0) + pow(s[4], 2.0));
   float error = abs_speed - params_d_->desired_speed;
@@ -343,6 +345,10 @@ inline __host__ __device__ void OmniWheelRobotMPPICosts::coorTransform(float x, 
 
 inline __device__ float OmniWheelRobotMPPICosts::getTrackCost(float* s, int* crash)
 {
+
+  // TODO: delete me!
+  return params_d_->track_coeff * abs(sqrt(pow(s[0] + 1.8, 2.0) + pow(s[1] + 2.0, 2.0)));
+
   float u,v,w; //Transformed coordinates
 
   //Cost of center of robot on track
