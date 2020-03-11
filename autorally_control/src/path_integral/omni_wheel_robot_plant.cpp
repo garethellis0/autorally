@@ -294,7 +294,7 @@ void OmniWheelRobotPlant::receiveRobotStatesLoop(){
 
     if (data_available && received_size == sizeof(new_state))
     {
-        std::cout << "Received State: (" << new_state << ")" << std::endl;
+       // std::cout << "Received State: (" << new_state << ")" << std::endl;
         newStateCallback(new_state);
     }
     else if (data_available && received_size != sizeof(new_state))
@@ -368,7 +368,7 @@ void OmniWheelRobotPlant::pubControl(OmniWheelRobotPlant::ControlVector wheel_co
     wheel_commands_queue_entry.back_left_milli_newton = wheel_commands(2) * 1000;
     wheel_commands_queue_entry.back_right_milli_newton = wheel_commands(3) * 1000;
 
-    ROS_INFO_STREAM("Transmitting Commands: " << wheel_commands_queue_entry);
+    //ROS_INFO_STREAM("Transmitting Commands: " << wheel_commands_queue_entry);
     bool send_succeeded = robot_wheel_commands_message_queue.timed_send(
         &wheel_commands_queue_entry, sizeof(wheel_commands_queue_entry), 0, t_timeout);
     if (!send_succeeded){

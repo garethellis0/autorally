@@ -607,7 +607,7 @@ void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeContr
     Eigen::Matrix<float, STATE_DIM, 1> state)
 {
   // TODO: delete this
-  printf("Starting MPPI controller\n");
+  //printf("Starting MPPI controller\n");
 
   //First transfer the state and current control sequence to the device.
   costs_->paramsToDevice();
@@ -630,7 +630,7 @@ void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeContr
             costs_, optimizationStride_, stream_
             );
 
-    printf("Transferring traj costs back to host\n");
+    //printf("Transferring traj costs back to host\n");
     HANDLE_ERROR(cudaMemcpyAsync(traj_costs_.data(), traj_costs_d_, NUM_ROLLOUTS*sizeof(float), cudaMemcpyDeviceToHost, stream_));
 
     //NOTE: The calls to cudaMemcpyAsync are only asynchronous with regards to (1) CPU operations AND (2) GPU operations 

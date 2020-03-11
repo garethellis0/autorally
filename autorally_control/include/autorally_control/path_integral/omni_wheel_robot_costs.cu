@@ -6,8 +6,7 @@
 * modification, are permitted provided that the following conditions are met:
 *
 * 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-* 2. Redistributions in binary form must reproduce the above copyright notice,
+* list of conditions and the following disclaimer.  2. Redistributions in binary form must reproduce the above copyright notice,
 * this list of conditions and the following disclaimer in the documentation
 * and/or other materials provided with the distribution.
 *
@@ -308,8 +307,8 @@ inline __host__ __device__ float OmniWheelRobotMPPICosts::getControlCost(float* 
 
 inline __host__ __device__ float OmniWheelRobotMPPICosts::getSpeedCost(float* s, int* crash)
 {
+  return params_d_->speed_coeff*abs(s[5]);
 
-  // TODO: delete me
   float cost = 0;
   float abs_speed = sqrt(pow(s[3], 2.0) + pow(s[4], 2.0));
   float error = abs_speed - params_d_->desired_speed;
@@ -347,7 +346,16 @@ inline __device__ float OmniWheelRobotMPPICosts::getTrackCost(float* s, int* cra
 {
 
   // TODO: delete me!
-  return params_d_->track_coeff * abs(sqrt(pow(s[0] + 1.8, 2.0) + pow(s[1] + 2.0, 2.0)));
+  return params_d_->track_coeff * abs(sqrt(pow(s[0] - 1.45, 2.0) + pow(s[1] - 2.7, 2.0)));
+  //return params_d_->track_coeff * abs(sqrt(pow(s[0] - 1.7, 2.0) + pow(s[1] - 1.7, 2.0)) - 1);
+  //return params_d_->track_coeff * abs(abs(s[0] - 1.7) + abs(s[1] - 1.7) - 1);
+  //return params_d_->track_coeff * min(
+  //    min(abs(s[0] + 2.25),
+  //    abs(s[0] + 0.75)),
+  //    min(abs(s[1] + 2.25),
+  //    abs(s[1] + 0.75))
+  //    );
+
 
   float u,v,w; //Transformed coordinates
 

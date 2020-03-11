@@ -254,26 +254,26 @@ void omniWheelRobotRunControlLoop(
     }
 
     // TODO: remove this printout
-    std::cout << "Control Solution: ";
-    for (int i = 0; i < controlSolution.size(); i++){
-      std::cout << controlSolution[i];
-      if ((i+1) % PLANT_T::CONTROL_DIM == 0){
-        std::cout << " | ";
-      } else {
-        std::cout << ", ";
-      }
-    }
-    std::cout << std::endl << "----------" << std::endl << std::endl;
-    std::cout << "State Solution: ";
-    for (int i = 0; i < stateSolution.size(); i++){
-      std::cout << stateSolution[i];
-      if ((i+1) % PLANT_T::STATE_DIM == 0){
-        std::cout << " | ";
-      } else {
-        std::cout << ", ";
-      }
-    }
-    std::cout << std::endl;
+    //std::cout << "Control Solution: ";
+    //for (int i = 0; i < controlSolution.size(); i++){
+    //  std::cout << controlSolution[i];
+    //  if ((i+1) % PLANT_T::CONTROL_DIM == 0){
+    //    std::cout << " | ";
+    //  } else {
+    //    std::cout << ", ";
+    //  }
+    //}
+    //std::cout << std::endl << "----------" << std::endl << std::endl;
+    //std::cout << "State Solution: ";
+    //for (int i = 0; i < stateSolution.size(); i++){
+    //  std::cout << stateSolution[i];
+    //  if ((i+1) % PLANT_T::STATE_DIM == 0){
+    //    std::cout << " | ";
+    //  } else {
+    //    std::cout << ", ";
+    //  }
+    //}
+    //std::cout << std::endl;
 
     //Set the updated solution for execution
     robot->setSolution(stateSolution, controlSolution, feedback_gain, 

@@ -146,21 +146,21 @@ protected:
   // pointing directly forward (+x) on the robot
   // TODO: wheel angles need to be the same for tests, if you want to use proper (different)
   //       wheel angles, then need to parametrize model
-//  static constexpr float FRONT_WHEEL_ANGLE_RAD = 1.047197;
-  static constexpr float FRONT_WHEEL_ANGLE_RAD = 0.785;
+  static constexpr float FRONT_WHEEL_ANGLE_RAD = 1.047197;
+  //static constexpr float FRONT_WHEEL_ANGLE_RAD = 0.785;
   // The angle of the front two wheels, measured relative to a vector
   // pointing directly backwards (-x) on the robot
   static constexpr float REAR_WHEEL_ANGLE_RAD = 0.785;
   // The radius of the robot, the center of each wheel is assumed to be 
   // displaced from the robot center by this amount
-  static constexpr float ROBOT_RADIUS_M = 0.88;
+  static constexpr float ROBOT_RADIUS_M = 0.088;
   // The mass of the robot
-  static constexpr float ROBOT_MASS_KG = 1.0;
+  static constexpr float ROBOT_MASS_KG = 1.7;
   // The moment of inertia of the robot. We init this in the constructor
   // because it uses pow(radius), but pow is not a constepxr function
   const float ROBOT_MOMENT_OF_INERTIA;
   // The radius of each wheel
-  static constexpr float WHEEL_RADIUS_M = 0.02;
+  static constexpr float WHEEL_RADIUS_M = 0.025;
   // The coefficient of friction for the wheels when the wheel is being
   // translated parallel to it's direction of rotation
   static constexpr float WHEEL_FRICTION_COEFF_IN_WHEEL_DIR = 0.25;

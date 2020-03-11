@@ -2,13 +2,14 @@
   <include file="$(find autorally_core)/launch/hardware.machine" />
 
   <!-- TODO: remove unused params! -->
+  <!-- Debug launch prefix: xterm -e gdb  -->
 
   <node
     pkg = "autorally_control" 
     type = "path_integral_omni_wheel_robot" 
     name = "mppi_controller"
     output = "screen"
-    launch-prefix="xterm -e gdb --args" 
+    launch-prefix="" 
     >
     
     <!--Pose topic configuration parameters -->
@@ -16,10 +17,10 @@
     <param name="path_topic" value="/mppi_controller/nominal_path" />
 
     <!--Debug/Sim mode parameter -->
-    <param name="debug_mode" value="true" />
+    <param name="debug_mode" value="false" />
 
     <!--Setup parameters-->
-    <param name="num_timesteps" value="50" />
+    <param name="num_timesteps" value="100" />
     <param name="x_pos" value="0" />
     <param name="y_pos" value="0" />
     <param name="heading" value="0" />
@@ -27,7 +28,7 @@
 
     <!-- How many controls are executed between optimization loops -->
     <param name="optimization_stride" value="1" />
-    <param name="use_feedback_gains" value="false" />
+    <param name="use_feedback_gains" value="true" />
 
     <!-- Control hyper-parameters-->
     <param name="norm_exp_kernel_gamma" value=".5" />
@@ -37,14 +38,14 @@
 
     <!-- Control Constraints -->
     <!-- TODO: this is really the max abs per-wheel control, rename -->
-    <param name="max_abs_wheel_force" value="0.8" />
+    <param name="max_abs_wheel_force" value="1.1" />
     <param name="controls_frequency" value="60" />
 
     <!-- Cost Parameters -->
     <param name="l1_cost" value="false" />
-    <param name="desired_speed" value="1.0" />
+    <param name="desired_speed" value="2.0" />
     <!--<param name="speed_coefficient" value="4.25" />-->
-    <param name="speed_coefficient" value="0.00" />
+    <param name="speed_coefficient" value="4.5" />
     <!--<param name="track_coefficient" value="200.0" />-->
     <param name="track_coefficient" value="200.0" />
     <param name="track_slop" value="0.0" />
