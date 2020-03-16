@@ -350,12 +350,13 @@ namespace autorally_control {
 
     CUDA_HOSTDEV void OmniWheelRobotModel::scaleControls(
             float state[6], float controls[4], float scaled_controls[4]) {
-        float wheel_speeds[4];
-        getWheelSpeeds(state[2], state[3], state[4], state[5], wheel_speeds);
+      float wheel_speeds[4];
+      getWheelSpeeds(state[2], state[3], state[4], state[5], wheel_speeds);
 
-        for (size_t i = 0; i < 4; i++) {
-            scaled_controls[i] = scaleWheelForce(wheel_speeds[i], controls[i]);
-        }
+      for (size_t i = 0; i < 4; i++) {
+        // TODO: comment about the negation here
+          scaled_controls[i] = scaleWheelForce(wheel_speeds[i], controls[i]);
+      }
     }
 
     CUDA_HOSTDEV float OmniWheelRobotModel::scaleWheelForce(
@@ -363,7 +364,7 @@ namespace autorally_control {
         // TODO: make these constants class members?
         const float MAX_FORCE_APPLICABLE_FROM_REST_N = 0.5;
         const float FORCE_VELOCITY_SCALING_FACTOR_N_PER_M_PER_S = 1.0;
-        const float FORCE_FALLOFF_FACTOR = 30;
+        const float FORCE_FALLOFF_FACTOR = 15;
 
         const float sigmoid_abs_positive_offset =
                 abs(MAX_FORCE_APPLICABLE_FROM_REST_N + max((float)0.0, wheel_speed) * FORCE_VELOCITY_SCALING_FACTOR_N_PER_M_PER_S);
@@ -403,7 +404,9 @@ namespace autorally_control {
         float v_G[3] = {v_x, v_y, 0};
 
         // Angular velocity vector
-        float w[3] = {0, 0, v_angular};
+        // TODO: revert this
+        //float w[3] = {0, 0, v_angular*0};
+        float w[3] = {0, 0, 0};
 
         // For each wheel, compute the component of it's velocity in the direction
         // that it's pointing
